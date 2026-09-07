@@ -1,0 +1,277 @@
+{
+  "badges": [
+    {
+      "id": "waterfall-explorer",
+      "level": "Daisy",
+      "category": "Nature",
+      "name": "Waterfall Explorer",
+      "description": "Discover waterfalls and the living things around them.",
+      "icon_slug": "waterfall",
+      "sort_order": 1,
+      "requirements": [
+        "Visit a waterfall, creek, or fountain and describe what you hear.",
+        "Draw or photograph the water from two different spots.",
+        "Name three living things you noticed near the water."
+      ]
+    },
+    {
+      "id": "leaf-detective",
+      "level": "Daisy",
+      "category": "Nature",
+      "name": "Leaf Detective",
+      "description": "Hunt for leaves and notice their shapes and colors.",
+      "icon_slug": "leaf",
+      "sort_order": 2,
+      "requirements": [
+        "Collect three different safe fallen leaves.",
+        "Sort them by size or color.",
+        "Make a simple leaf rubbing or tracing."
+      ]
+    },
+    {
+      "id": "cloud-watcher",
+      "level": "Daisy",
+      "category": "Nature",
+      "name": "Cloud Watcher",
+      "description": "Look up and notice how the sky changes.",
+      "icon_slug": "cloud",
+      "sort_order": 3,
+      "requirements": [
+        "Watch the sky for five quiet minutes.",
+        "Draw two cloud shapes you saw.",
+        "Tell someone whether it felt sunny, windy, or rainy."
+      ]
+    },
+    {
+      "id": "sun-print-artist",
+      "level": "Daisy",
+      "category": "Art",
+      "name": "Sun Print Artist",
+      "description": "Make art with sunlight, leaves, and imagination.",
+      "icon_slug": "sunprint",
+      "sort_order": 1,
+      "requirements": [
+        "Collect three safe leaves or shapes for a sun print.",
+        "Make one sun print (or paper version) and wait for it to develop.",
+        "Share your artwork with a family member and explain the steps."
+      ]
+    },
+    {
+      "id": "color-mixer",
+      "level": "Daisy",
+      "category": "Art",
+      "name": "Color Mixer",
+      "description": "Mix colors and invent a brand-new shade.",
+      "icon_slug": "palette",
+      "sort_order": 2,
+      "requirements": [
+        "Mix two colors to make a new one.",
+        "Name your new color.",
+        "Paint or color a picture using that mix."
+      ]
+    },
+    {
+      "id": "animal-observer",
+      "level": "Daisy",
+      "category": "Animals",
+      "name": "Animal Observer",
+      "description": "Quietly notice animals and how they live.",
+      "icon_slug": "animals",
+      "sort_order": 1,
+      "requirements": [
+        "Watch an animal (pet, bird, or bug) for five quiet minutes.",
+        "Write or draw two things it did.",
+        "Share one way people can be kind to animals."
+      ]
+    },
+    {
+      "id": "bug-buddy",
+      "level": "Daisy",
+      "category": "Animals",
+      "name": "Bug Buddy",
+      "description": "Meet tiny creatures with care and curiosity.",
+      "icon_slug": "bug",
+      "sort_order": 2,
+      "requirements": [
+        "Find a bug outdoors without touching it.",
+        "Draw its shape and count its legs if you can see them.",
+        "Leave its home the way you found it."
+      ]
+    },
+    {
+      "id": "kitchen-scientist",
+      "level": "Brownie",
+      "category": "Cooking",
+      "name": "Kitchen Scientist",
+      "description": "Try simple food experiments and notice what changes.",
+      "icon_slug": "kitchen",
+      "sort_order": 1,
+      "requirements": [
+        "With an adult, mix two safe ingredients and watch what happens.",
+        "Write down one prediction and whether it came true.",
+        "Clean your workspace when you finish.",
+        "Taste or smell one finished result (if safe) and describe it."
+      ]
+    },
+    {
+      "id": "snack-chef",
+      "level": "Brownie",
+      "category": "Cooking",
+      "name": "Snack Chef",
+      "description": "Plan and make a simple snack with an adult.",
+      "icon_slug": "snack",
+      "sort_order": 2,
+      "requirements": [
+        "Choose a snack recipe with an adult.",
+        "Wash your hands and prep one ingredient.",
+        "Help assemble the snack.",
+        "Share it with someone and ask what they liked."
+      ]
+    },
+    {
+      "id": "robot-builder",
+      "level": "Brownie",
+      "category": "STEM",
+      "name": "Robot Builder",
+      "description": "Build, pretend, and problem-solve like an engineer.",
+      "icon_slug": "robot",
+      "sort_order": 1,
+      "requirements": [
+        "Build a robot out of recyclables, blocks, or craft materials.",
+        "Give your robot a job it could help with.",
+        "Fix one thing that did not work the first time.",
+        "Show someone how your robot moves or works."
+      ]
+    },
+    {
+      "id": "code-crafter",
+      "level": "Brownie",
+      "category": "STEM",
+      "name": "Code Crafter",
+      "description": "Learn how step-by-step instructions make machines work.",
+      "icon_slug": "code",
+      "sort_order": 2,
+      "requirements": [
+        "Write a 5-step instruction for making a sandwich or brushing teeth.",
+        "Have someone follow your steps exactly.",
+        "Fix one unclear step.",
+        "Explain why order matters."
+      ]
+    },
+    {
+      "id": "trail-navigator",
+      "level": "Brownie",
+      "category": "Outdoors",
+      "name": "Trail Navigator",
+      "description": "Practice finding your way on a short outdoor walk.",
+      "icon_slug": "trail",
+      "sort_order": 1,
+      "requirements": [
+        "Take a short walk with an adult and notice three landmarks.",
+        "Draw a simple map of where you went.",
+        "Explain how you would find your way back."
+      ]
+    },
+    {
+      "id": "camp-ready",
+      "level": "Brownie",
+      "category": "Outdoors",
+      "name": "Camp Ready",
+      "description": "Practice outdoor skills that help you feel prepared.",
+      "icon_slug": "camp",
+      "sort_order": 2,
+      "requirements": [
+        "Pack a pretend daypack with water, a snack, and a jacket.",
+        "Practice sitting quietly outside for three minutes.",
+        "Name two Leave No Trace ideas."
+      ]
+    },
+    {
+      "id": "elf-house-architect",
+      "level": "Junior",
+      "category": "Outdoors",
+      "name": "Elf House Architect",
+      "description": "Design a tiny outdoor home using found natural materials.",
+      "icon_slug": "elfhouse",
+      "sort_order": 1,
+      "requirements": [
+        "Sketch a floor plan for a tiny house.",
+        "Build it outside using sticks, leaves, or stones (no living plants harmed).",
+        "Add one cozy detail (door, path, or roof).",
+        "Take a photo and write what an elf might like about it."
+      ]
+    },
+    {
+      "id": "shelter-scout",
+      "level": "Junior",
+      "category": "Outdoors",
+      "name": "Shelter Scout",
+      "description": "Learn what makes a safe, cozy outdoor shelter.",
+      "icon_slug": "shelter",
+      "sort_order": 2,
+      "requirements": [
+        "List three things a good shelter needs.",
+        "Build a mini shelter model indoors or outdoors.",
+        "Explain how weather would affect your design."
+      ]
+    },
+    {
+      "id": "first-aid-helper",
+      "level": "Junior",
+      "category": "First Aid",
+      "name": "First Aid Helper",
+      "description": "Learn calm, helpful steps for small emergencies.",
+      "icon_slug": "firstaid",
+      "sort_order": 1,
+      "requirements": [
+        "Practice washing hands the right way for 20 seconds.",
+        "With an adult, pack a tiny first-aid pouch with three useful items.",
+        "Role-play calling for help and sharing your location.",
+        "Write one safety tip you want your family to remember."
+      ]
+    },
+    {
+      "id": "calm-coach",
+      "level": "Junior",
+      "category": "First Aid",
+      "name": "Calm Coach",
+      "description": "Practice staying calm so you can help others.",
+      "icon_slug": "calm",
+      "sort_order": 2,
+      "requirements": [
+        "Practice three slow breaths.",
+        "Role-play comforting a friend with a small scrape.",
+        "Write two kind phrases you could say to help."
+      ]
+    },
+    {
+      "id": "bridge-builder",
+      "level": "Junior",
+      "category": "STEM",
+      "name": "Bridge Builder",
+      "description": "Test strong shapes and build a mini bridge.",
+      "icon_slug": "bridge",
+      "sort_order": 1,
+      "requirements": [
+        "Build a mini bridge from paper, sticks, or blocks.",
+        "Test how much weight it can hold.",
+        "Rebuild once to make it stronger.",
+        "Explain which shape helped most."
+      ]
+    },
+    {
+      "id": "circuit-spark",
+      "level": "Junior",
+      "category": "STEM",
+      "name": "Circuit Spark",
+      "description": "Explore how simple circuits make things light up.",
+      "icon_slug": "circuit",
+      "sort_order": 2,
+      "requirements": [
+        "With an adult, explore a simple circuit kit or a battery flashlight.",
+        "Draw a loop that shows power flowing.",
+        "Describe one safety rule for batteries and wires."
+      ]
+    }
+  ]
+}
