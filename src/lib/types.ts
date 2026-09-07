@@ -39,7 +39,10 @@ export const EMPTY_ONBOARDING: OnboardingDraft = {
 
 export type BadgeRequirement = {
   id: string;
+  /** Short step title shown in the list */
   text: string;
+  /** Clear how-to shown when the step is opened */
+  detail: string;
   sortOrder: number;
 };
 

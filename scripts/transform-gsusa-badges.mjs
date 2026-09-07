@@ -163,15 +163,68 @@ function descriptionFor(badge) {
   return `Earn the ${cleanTitle(badge.title)}.`;
 }
 
+/**
+ * Explorer only publishes short step titles. Expand each into a clear
+ * kid-friendly how-to (original companion wording — not booklet copy).
+ */
+function howtoFor(badge, stepText, stepNum, total) {
+  const badgeName = cleanTitle(badge.title);
+  const step = String(stepText || "").trim() || "this step";
+  const summary = String(badge.summary || "").trim();
+  const outcome = String(badge.outcome || "").trim();
+  const s = step.toLowerCase();
+
+  let action;
+  if (
+    /^(make|create|build|craft|draw|paint|design|cook|bake)\b/.test(s) ||
+    /\b(make|create|build|craft)\b/.test(s)
+  ) {
+    action = `Make or create something for this step (“${step}”). Use safe materials you already have. When you’re done, write what you made, how you made it, and one thing you’d change next time.`;
+  } else if (/^(learn|discover|explore|find out|study|research)\b/.test(s)) {
+    action = `Learn about this (“${step}”). Ask a grown-up, look it up together, or explore outside. Write 2–3 new things you learned.`;
+  } else if (/^(play|practice|try|do|put it into practice)\b/.test(s)) {
+    action = `Do this activity for real (“${step}”). Spend a few minutes practicing it, then write what you tried and what happened.`;
+  } else if (/^(focus|choose|pick|select)\b/.test(s)) {
+    action = `Choose one clear thing for this step (“${step}”). Spend time with that choice, then write what you picked and what you noticed.`;
+  } else if (/^(share|show|tell|teach|present)\b/.test(s)) {
+    action = `Share this with a family member or friend (“${step}”). Write who you told and what you shared.`;
+  } else if (
+    /\b(visit|go|search|find|sort|count|identify|watch|observe|observer|look|listen|collect)\b/.test(
+      s,
+    )
+  ) {
+    action = `Go do this outdoors or at home (“${step}”). Write where you were and what you found, saw, or heard.`;
+  } else if (/^(be|become|respect|celebrate|support|help|protect|reduce|reuse|recycle)\b/.test(s)) {
+    action = `Practice this in real life today (“${step}”). Do at least one concrete action, then write exactly what you did and who it helped (including you).`;
+  } else if (/^(plan|organize|take action|start)\b/.test(s)) {
+    action = `Plan and start a small real action (“${step}”). Write your plan in simple steps and what you already started.`;
+  } else {
+    action = `Complete this badge step in real life (“${step}”). Write exactly what you did, where you were, and what you noticed.`;
+  }
+
+  const goal = summary
+    ? ` Badge goal: ${summary.replace(/\s+/g, " ").replace(/\.$/, "")}.`
+    : outcome
+      ? ` ${outcome.replace(/\s+/g, " ")}`
+      : "";
+
+  return `Step ${stepNum} of ${total} for the ${badgeName} badge. ${action}${goal} Ask a grown-up if you need help. Your official badge book has more activity ideas.`;
+}
+
 function requirementsFor(badge) {
   const official = Array.isArray(badge.requirements) ? badge.requirements : [];
-  const texts = official
+  const sorted = official
     .slice()
     .sort((a, b) => (a.step ?? 0) - (b.step ?? 0))
     .map((r) => String(r.text || "").trim())
     .filter(Boolean);
-  if (texts.length) return texts;
-  return ["Explore this badge and write what you learned."];
+  const texts = sorted.length
+    ? sorted
+    : ["Explore this badge and write what you learned."];
+  return texts.map((text, index) => ({
+    text,
+    detail: howtoFor(badge, text, index + 1, texts.length),
+  }));
 }
 
 /** Ensure PNG lives under the corrected level folder + slug. */

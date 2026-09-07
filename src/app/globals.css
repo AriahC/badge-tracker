@@ -59,10 +59,7 @@ body {
   margin: 0;
   color: var(--bj-ink);
   font-family: var(--font-body);
-  background:
-    radial-gradient(circle at 8% 0%, rgba(79, 155, 85, 0.08), transparent 28%),
-    radial-gradient(circle at 92% 4%, rgba(228, 178, 60, 0.12), transparent 26%),
-    var(--bj-bg);
+  background: var(--bj-bg);
   line-height: 1.45;
 }
 
@@ -744,6 +741,26 @@ textarea:focus-visible,
 
 .sheet h2 {
   margin: 0 0 0.45rem;
+}
+
+.req-step-label {
+  margin: 0 0 0.55rem;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--bj-ink);
+}
+
+.req-howto {
+  margin: 0 0 0.75rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--bj-radius-sm);
+  background: color-mix(in srgb, var(--bj-stem) 8%, white);
+  border: 1.5px solid color-mix(in srgb, var(--bj-stem) 22%, var(--bj-border));
+  color: var(--bj-ink);
+  font-size: 0.98rem;
+  line-height: 1.45;
+  font-weight: 600;
 }
 
 .note-field {

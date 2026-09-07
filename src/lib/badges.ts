@@ -4,6 +4,13 @@ import type { Badge, GirlScoutLevel } from "./types";
 
 export { categoryColor, CATEGORY_COLORS, CATEGORY_ORDER } from "./assets";
 
+type SeedRequirement =
+  | string
+  | {
+      text: string;
+      detail?: string;
+    };
+
 type SeedBadge = {
   id: string;
   level: GirlScoutLevel;
@@ -14,13 +21,33 @@ type SeedBadge = {
   /** Official Explorer slug; preferred for badge art when present. */
   slug?: string;
   sort_order: number;
-  requirements: string[];
+  requirements: SeedRequirement[];
 };
 
 function resolveIconSlug(b: SeedBadge): string {
   if (b.slug && b.slug.includes("--")) return b.slug;
   if (b.icon_slug.includes("--")) return b.icon_slug;
   return b.icon_slug;
+}
+
+function normalizeRequirement(
+  req: SeedRequirement,
+  index: number,
+  badgeId: string,
+  badgeName: string,
+) {
+  const text = typeof req === "string" ? req : req.text;
+  const detail =
+    typeof req === "string"
+      ? `For the ${badgeName} badge — complete this step in real life: “${text}”. Write exactly what you did, where you were, and what you noticed.`
+      : req.detail?.trim() ||
+        `For the ${badgeName} badge — complete this step in real life: “${text}”. Write exactly what you did, where you were, and what you noticed.`;
+  return {
+    id: `${badgeId}-req-${index + 1}`,
+    text,
+    detail,
+    sortOrder: index + 1,
+  };
 }
 
 const ALL_BADGES: Badge[] = (seed.badges as SeedBadge[]).map((b) => {
@@ -33,11 +60,9 @@ const ALL_BADGES: Badge[] = (seed.badges as SeedBadge[]).map((b) => {
     description: b.description,
     iconSlug: resolveIconSlug(b),
     sortOrder: b.sort_order,
-    requirements: b.requirements.map((text, index) => ({
-      id: `${id}-req-${index + 1}`,
-      text,
-      sortOrder: index + 1,
-    })),
+    requirements: b.requirements.map((req, index) =>
+      normalizeRequirement(req, index, id, b.name),
+    ),
   };
 });
 

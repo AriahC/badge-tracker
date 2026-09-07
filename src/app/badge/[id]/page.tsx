@@ -81,7 +81,10 @@ export default function BadgeDetailPage() {
 
   function saveRequirement() {
     if (!badge || !activeReq || !activeReqId) return;
-    const check = checkRequirementNote(activeReq.text, note);
+    const check = checkRequirementNote(
+      `${activeReq.text}. ${activeReq.detail}`,
+      note,
+    );
     if (!check.ok) {
       setNoteError(check.reason);
       return;
@@ -244,7 +247,8 @@ export default function BadgeDetailPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 id="sheet-title">{t(lang, "tellUsTitle")}</h2>
-            <p className="hint">{activeReq.text}</p>
+            <p className="req-step-label">{activeReq.text}</p>
+            <p className="req-howto">{activeReq.detail}</p>
             <p className="hint soft">{t(lang, "tellUsMatchHint")}</p>
             <textarea
               className={`field note-field ${noteError ? "field-error" : ""}`}
