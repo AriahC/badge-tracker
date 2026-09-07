@@ -1,6 +1,6 @@
 /** Map badge icon slugs + categories to local asset paths. */
 
-const ASSET_V = "26";
+const ASSET_V = "27";
 
 /**
  * Official GS badge art from the user pack:
@@ -54,7 +54,8 @@ export type UiAssetName =
   | "nav-notebook"
   | "nav-journal"
   | "nav-gallery"
-  | "speak";
+  | "speak"
+  | "ladybug";
 
 export function uiAssetSrc(name: UiAssetName): string {
   return `/assets/ui/${name}.png?v=${ASSET_V}`;

@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { usePathname } from "next/navigation";
+import { uiAssetSrc } from "@/lib/assets";
 import { saveFeedback, type FeedbackKind } from "@/lib/feedback";
 import { t } from "@/lib/i18n";
 import { loadProfile } from "@/lib/storage";
@@ -74,7 +75,15 @@ export function FeedbackWidgets() {
           aria-expanded={mode === "bug"}
         >
           <span className="feedback-chip-icon" aria-hidden="true">
-            !
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              className="feedback-ladybug"
+              src={uiAssetSrc("ladybug")}
+              alt=""
+              width={18}
+              height={18}
+              draggable={false}
+            />
           </span>
           {t(lang, "feedbackBugButton")}
         </button>
