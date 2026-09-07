@@ -1,6 +1,6 @@
 /** Map badge icon slugs + categories to local asset paths. */
 
-const ASSET_V = "27";
+const ASSET_V = "28";
 
 /**
  * Official GS badge art from the user pack:
