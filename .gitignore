@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -14,7 +14,7 @@
 /coverage
 
 # next.js
-/.next/
+.next/
 /out/
 
 # production
@@ -46,3 +46,18 @@ next-env.d.ts
 /public/assets/reference/_hq_preview/
 /public/assets/reference/_debug_*
 /public/assets/reference/*-grid.png
+
+# Official GSUSA Badge Explorer artwork — reference only; never ship as product art
+/data/gsusa/girl-scout-badges/images/
+/data/gsusa/girl-scout-badges/data/raw/
+/data/gsusa/**/__MACOSX/
+/public/assets/badges/daisy/
+/public/assets/badges/brownie/
+/public/assets/badges/junior/
+/public/assets/badges/cadette/
+/public/assets/badges/senior/
+/public/assets/badges/ambassador/
+/public/assets/reference/_cd_*
+/public/assets/reference/_fs_junior*
+/public/assets/reference/_jr_*
+__MACOSX/

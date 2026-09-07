@@ -1,7 +1,8 @@
 import seed from "../../data/badges.seed.json";
+import { CATEGORY_ORDER } from "./assets";
 import type { Badge, GirlScoutLevel } from "./types";
 
-export { categoryColor, CATEGORY_COLORS } from "./assets";
+export { categoryColor, CATEGORY_COLORS, CATEGORY_ORDER } from "./assets";
 
 type SeedBadge = {
   id: string;
@@ -10,24 +11,35 @@ type SeedBadge = {
   name: string;
   description: string;
   icon_slug: string;
+  /** Official Explorer slug; preferred for badge art when present. */
+  slug?: string;
   sort_order: number;
   requirements: string[];
 };
 
-const ALL_BADGES: Badge[] = (seed.badges as SeedBadge[]).map((b) => ({
-  id: b.id,
-  level: b.level,
-  category: b.category,
-  name: b.name,
-  description: b.description,
-  iconSlug: b.icon_slug,
-  sortOrder: b.sort_order,
-  requirements: b.requirements.map((text, index) => ({
-    id: `${b.id}-req-${index + 1}`,
-    text,
-    sortOrder: index + 1,
-  })),
-}));
+function resolveIconSlug(b: SeedBadge): string {
+  if (b.slug && b.slug.includes("--")) return b.slug;
+  if (b.icon_slug.includes("--")) return b.icon_slug;
+  return b.icon_slug;
+}
+
+const ALL_BADGES: Badge[] = (seed.badges as SeedBadge[]).map((b) => {
+  const id = b.slug && b.slug.includes("--") ? b.slug : b.id;
+  return {
+    id,
+    level: b.level,
+    category: b.category,
+    name: b.name,
+    description: b.description,
+    iconSlug: resolveIconSlug(b),
+    sortOrder: b.sort_order,
+    requirements: b.requirements.map((text, index) => ({
+      id: `${id}-req-${index + 1}`,
+      text,
+      sortOrder: index + 1,
+    })),
+  };
+});
 
 export function getBadgesForLevel(level: GirlScoutLevel): Badge[] {
   return ALL_BADGES.filter((b) => b.level === level).sort(
@@ -53,8 +65,16 @@ export function groupBadgesByCategory(badges: Badge[]): {
     list.push(badge);
     map.set(badge.category, list);
   }
-  return Array.from(map.entries()).map(([category, group]) => ({
-    category,
-    badges: group.sort((a, b) => a.sortOrder - b.sortOrder),
-  }));
+  return Array.from(map.entries())
+    .map(([category, group]) => ({
+      category,
+      badges: group.sort((a, b) => a.sortOrder - b.sortOrder),
+    }))
+    .sort((a, b) => {
+      const ai = CATEGORY_ORDER.indexOf(a.category);
+      const bi = CATEGORY_ORDER.indexOf(b.category);
+      const ao = ai === -1 ? 999 : ai;
+      const bo = bi === -1 ? 999 : bi;
+      return ao - bo || a.category.localeCompare(b.category);
+    });
 }

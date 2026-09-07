@@ -152,6 +152,7 @@ export default function BadgeDetailPage() {
             total: String(badge.requirements.length),
           })}
         </p>
+        <p className="hint badge-companion-note">{t(lang, "badgeCompanionNote")}</p>
       </div>
 
       <section className="req-list" aria-label={t(lang, "requirementsTitle")}>

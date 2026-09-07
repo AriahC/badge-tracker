@@ -7,7 +7,6 @@ import {
   categoryColor,
   categoryImageSrc,
 } from "@/lib/assets";
-import { layoutClump } from "@/lib/clumpLayout";
 import { badgeProgressRatio, isBadgeEarned } from "@/lib/progress";
 import type { Badge, ProgressState } from "@/lib/types";
 
@@ -17,11 +16,19 @@ type BadgeClumpProps = {
   progress: ProgressState;
 };
 
+/** Small stable tilt so orbs still feel playful without overlapping. */
+function tiltForId(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h + id.charCodeAt(i) * (i + 1)) % 11;
+  return h - 5;
+}
+
 export function BadgeClump({ category, badges, progress }: BadgeClumpProps) {
   const color = categoryColor(category);
-  const positions = layoutClump(badges.map((b) => b.id));
-  const byId = new Map(badges.map((b) => [b.id, b]));
   const catImg = categoryImageSrc(category);
+  const ordered = [...badges].sort(
+    (a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name),
+  );
 
   return (
     <section className="clump" style={{ ["--clump-accent" as string]: color }}>
@@ -31,21 +38,16 @@ export function BadgeClump({ category, badges, progress }: BadgeClumpProps) {
           <img
             className="clump-label-art"
             src={catImg}
-            alt={category}
+            alt=""
             width={120}
             height={72}
           />
-        ) : (
-          <>
-            <span aria-hidden="true">{CATEGORY_EMOJI[category] ?? "🏅"}</span>
-            {category}
-          </>
-        )}
+        ) : null}
+        <span aria-hidden="true">{CATEGORY_EMOJI[category] ?? "🏅"}</span>
+        {category}
       </h2>
       <div className="clump-field" aria-label={`${category} badges`}>
-        {positions.map((pos) => {
-          const badge = byId.get(pos.id);
-          if (!badge) return null;
+        {ordered.map((badge) => {
           const ratio = badgeProgressRatio(badge, progress);
           const earned = isBadgeEarned(badge.id, progress);
           const state = earned
@@ -60,11 +62,8 @@ export function BadgeClump({ category, badges, progress }: BadgeClumpProps) {
               href={`/badge/${badge.id}`}
               className={`badge-orb ${earned ? "badge-earned" : ""}`}
               style={{
-                left: `${pos.x}%`,
-                top: `${pos.y}%`,
-                width: `${pos.size}rem`,
                 ["--badge-color" as string]: color,
-                ["--badge-tilt" as string]: `${pos.rotate}deg`,
+                ["--badge-tilt" as string]: `${tiltForId(badge.id)}deg`,
               }}
               aria-label={`${badge.name}, ${Math.round(ratio * 100)}% complete`}
             >

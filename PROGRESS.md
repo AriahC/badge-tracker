@@ -1,28 +1,37 @@
 # Progress
 
-## What works now (UI redesign pass)
+## What works now
 
-Visual redesign applied on top of existing features (no rebuild):
-
-- Warm adventure-notebook color system + Nunito / Atkinson fonts
-- **Final individual HQ assets** from design pack in `public/assets/` (badges, categories, decorations, UI)
-- Full pack also kept in `public/assets/pack/` for unused extras
-- Home: colorful badge clumps with category label stickers
-- Tip art uses crisp HTML speech bubble + HQ decorative accent
-- Badge detail: grey → color fill, progress ring, encouraging note errors, celebration + permanent flow
-- Notebook / Journal / Gallery / Onboarding restyled to match
-- Bottom nav with pack nav icons + large touch targets
+- Warm adventure-notebook UI + Nunito / Atkinson fonts
+- **GSUSA referential badge pack** (365 badges, all levels Daisy → Ambassador)
+  - Seed: `data/badges.seed.json` from `npm run transform:gsusa`
+  - Source extract: `data/gsusa/girl-scout-badges/` (see `data/gsusa/CONTENT.md`)
+  - Official titles/levels kept; step summaries are Veya-original
+  - Official Explorer artwork **not** shipped — Veya HQ icons only
+  - Independent-companion note on badge detail
+- Home groups by topic category for the child’s level (clumps scale for larger packs)
+- Notebook / Journal / Gallery / Onboarding + bottom nav
 
 ## How to test
 
 ```bash
+npm run transform:gsusa   # optional refresh from data/gsusa pack
 npm run dev
 ```
 
-Open **http://localhost:3000** — walk Home → badge → note → Journal.
+Open **http://localhost:3000** — onboarding → pick a level → Home clumps → badge detail → note → Journal.
+
+Reset demo progress after this content swap (old demo badge ids no longer exist).
+
+## Positioning
+
+- **Now:** Girl Scout families only (see `docs/veya/POSITIONING.md`)
+- **Later:** open to more people / programs — keep packs reversible
 
 ## Still later
 
 - Real Solana minting
 - Supabase accounts / cloud save
-- Dedicated plant-keeper badge art if design pack adds one (currently uses plant icon)
+- Remote content-pack switch (disable GSUSA pack without App Store release)
+- Licensed official art only if/when authorized
+- Non–Girl Scout content packs + onboarding

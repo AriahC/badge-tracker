@@ -1,43 +1,36 @@
-/** Map badge icon slugs + categories to local HQ asset paths. */
+/** Map badge icon slugs + categories to local asset paths. */
 
-const SLUG_TO_BADGE: Record<string, string> = {
-  waterfall: "forest-explorer",
-  leaf: "plant-keeper",
-  cloud: "forest-explorer",
-  sunprint: "art-maker",
-  palette: "art-maker",
-  animals: "animal-friend",
-  bug: "animal-friend",
-  kitchen: "baking-star",
-  snack: "baking-star",
-  robot: "little-inventor",
-  code: "little-inventor",
-  trail: "outdoor-adventurer",
-  camp: "outdoor-adventurer",
-  elfhouse: "outdoor-adventurer",
-  shelter: "outdoor-adventurer",
-  firstaid: "helper-hero",
-  calm: "helper-hero",
-  bridge: "little-inventor",
-  circuit: "little-inventor",
-};
+const ASSET_V = "26";
+
+/**
+ * Official GS badge art from the user pack:
+ * /assets/badges/<level>/<slug>.png  (slug like daisy--outdoor-art-maker)
+ */
+export function badgeImageSrc(iconSlug: string): string {
+  if (iconSlug.includes("--")) {
+    const level = iconSlug.split("--")[0] || "daisy";
+    return `/assets/badges/${level}/${iconSlug}.png?v=${ASSET_V}`;
+  }
+  return `/assets/badges/${iconSlug}.png?v=${ASSET_V}`;
+}
 
 const CATEGORY_TO_FILE: Record<string, string> = {
-  Nature: "nature",
-  Animals: "animals",
-  Cooking: "cooking",
-  "First Aid": "first-aid",
-  STEM: "stem",
-  Art: "art",
-  Outdoors: "outdoors",
+  "Animals and Nature": "nature",
+  "Art and Imagination": "art",
+  "Outdoor Adventure": "outdoors",
+  "Technology and Innovation": "stem",
+  "Sports and Recreation": "outdoors",
+  "Your World Near and Far": "animals",
+  "Balanced Living": "first-aid",
+  "Leadership and Your Future": "stem",
+  Journeys: "nature",
+  Petals: "art",
+  Awards: "outdoors",
+  "Highest Awards": "outdoors",
+  "Highest Award Prerequisite": "outdoors",
+  "Leadership Awards": "stem",
+  Pins: "cooking",
 };
-
-const ASSET_V = "20";
-
-export function badgeImageSrc(iconSlug: string): string {
-  const file = SLUG_TO_BADGE[iconSlug] ?? "forest-explorer";
-  return `/assets/badges/${file}.png?v=${ASSET_V}`;
-}
 
 export function categoryImageSrc(category: string): string | null {
   const file = CATEGORY_TO_FILE[category];
@@ -67,21 +60,29 @@ export function uiAssetSrc(name: UiAssetName): string {
   return `/assets/ui/${name}.png?v=${ASSET_V}`;
 }
 
-/** Featured badge art for non-home screens (how-it-works, empty accents). */
+/** Featured badge art for non-home screens. */
 export const FEATURE_BADGES = {
-  explorer: "/assets/badges/forest-explorer.png?v=" + ASSET_V,
-  notebook: "/assets/badges/art-maker.png?v=" + ASSET_V,
-  sparkle: "/assets/badges/helper-hero.png?v=" + ASSET_V,
+  explorer: "/assets/badges/daisy/daisy--outdoor-art-maker.png?v=" + ASSET_V,
+  notebook: "/assets/badges/daisy/daisy--create-and-innovate.png?v=" + ASSET_V,
+  sparkle: "/assets/badges/daisy/daisy--friendly-and-helpful.png?v=" + ASSET_V,
 } as const;
 
 export const CATEGORY_COLORS: Record<string, string> = {
-  Nature: "#4F9B55",
-  Animals: "#E89A3B",
-  Cooking: "#D95C4B",
-  "First Aid": "#D95757",
-  STEM: "#4E86C5",
-  Art: "#B56CC6",
-  Outdoors: "#38A6A0",
+  Petals: "#1496D4",
+  Journeys: "#5C1F8B",
+  Awards: "#F7BE00",
+  "Highest Awards": "#FF830C",
+  "Highest Award Prerequisite": "#A67C52",
+  "Leadership Awards": "#EE3124",
+  Pins: "#E89A3B",
+  "Animals and Nature": "#4F9B55",
+  "Art and Imagination": "#B56CC6",
+  "Balanced Living": "#D95757",
+  "Leadership and Your Future": "#4E86C5",
+  "Outdoor Adventure": "#38A6A0",
+  "Sports and Recreation": "#2F8F6B",
+  "Technology and Innovation": "#3D7CC9",
+  "Your World Near and Far": "#C46B3A",
 };
 
 export function categoryColor(category: string): string {
@@ -89,11 +90,38 @@ export function categoryColor(category: string): string {
 }
 
 export const CATEGORY_EMOJI: Record<string, string> = {
-  Nature: "🌿",
-  Animals: "🐾",
-  Cooking: "🍳",
-  "First Aid": "🩹",
-  STEM: "🔬",
-  Art: "🎨",
-  Outdoors: "🏕️",
+  Petals: "🌼",
+  Journeys: "📖",
+  Awards: "🏆",
+  "Highest Awards": "⭐",
+  "Highest Award Prerequisite": "🔖",
+  "Leadership Awards": "🎖️",
+  Pins: "📌",
+  "Animals and Nature": "🌿",
+  "Art and Imagination": "🎨",
+  "Balanced Living": "💚",
+  "Leadership and Your Future": "🚀",
+  "Outdoor Adventure": "🏕️",
+  "Sports and Recreation": "⚽",
+  "Technology and Innovation": "🔬",
+  "Your World Near and Far": "🌍",
 };
+
+/** Display order for home category clumps. */
+export const CATEGORY_ORDER: string[] = [
+  "Petals",
+  "Animals and Nature",
+  "Art and Imagination",
+  "Balanced Living",
+  "Outdoor Adventure",
+  "Sports and Recreation",
+  "Technology and Innovation",
+  "Your World Near and Far",
+  "Leadership and Your Future",
+  "Journeys",
+  "Leadership Awards",
+  "Highest Award Prerequisite",
+  "Highest Awards",
+  "Awards",
+  "Pins",
+];
