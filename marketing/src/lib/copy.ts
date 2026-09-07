@@ -203,7 +203,7 @@ export const checkout = {
   ],
   payCta: "Pay $1 & Join →",
   demoNote:
-    "Payment is UI-only for now. Stripe will be wired next — continue to preview the confirmation experience.",
+    "After acknowledgements, continue to Stripe Checkout to pay $1 once. Veya never stores card details.",
   consents: [
     "I am a parent or guardian, or I am at least 18 years old.",
     "I understand this is a one-time $1 early-access purchase and Veya is still in development.",

@@ -119,5 +119,16 @@
   "langEnglish": "English",
   "langSpanish": "Español",
   "langFrench": "Français",
-  "langVietnamese": "Tiếng Việt"
+  "langVietnamese": "Tiếng Việt",
+  "feedbackBugButton": "Error",
+  "feedbackIdeaButton": "Idea",
+  "feedbackBugTitle": "Reportar un error",
+  "feedbackIdeaTitle": "Compartir una idea",
+  "feedbackBugHint": "¿Qué salió mal? Una nota corta ayuda mucho.",
+  "feedbackIdeaHint": "¿Qué haría Badge Journey mejor?",
+  "feedbackBugPlaceholder": "Describe el error…",
+  "feedbackIdeaPlaceholder": "Describe tu idea…",
+  "feedbackSend": "Enviar",
+  "feedbackThanks": "¡Gracias! Guardamos tu nota.",
+  "feedbackClose": "Cerrar"
 }

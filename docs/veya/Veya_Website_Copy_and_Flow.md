@@ -427,7 +427,7 @@ No. Veya provides a clear planning and progress view designed to be used alongsi
 
 ### Is Veya only for Girl Scouts?
 
-No. Girl Scout badge tracking inspired the first experience, but Veya is designed for many kinds of family learning, youth achievements, service, travel, projects, and original adventures.
+Yes — for now. Veya is built for Girl Scout families. Later we hope to welcome more people and kinds of real-world learning, while keeping Girl Scouts beautifully supported.
 
 ### What does the $1 include?
 

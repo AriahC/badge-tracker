@@ -131,5 +131,16 @@
   "langEnglish": "English",
   "langSpanish": "Español",
   "langFrench": "Français",
-  "langVietnamese": "Tiếng Việt"
+  "langVietnamese": "Tiếng Việt",
+  "feedbackBugButton": "Bug",
+  "feedbackIdeaButton": "Idea",
+  "feedbackBugTitle": "Report a bug",
+  "feedbackIdeaTitle": "Share an idea",
+  "feedbackBugHint": "What went wrong? A short note helps a lot.",
+  "feedbackIdeaHint": "What would make Badge Journey better?",
+  "feedbackBugPlaceholder": "Describe the bug…",
+  "feedbackIdeaPlaceholder": "Describe your idea…",
+  "feedbackSend": "Send",
+  "feedbackThanks": "Thanks! We saved your note.",
+  "feedbackClose": "Close"
 }

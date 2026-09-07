@@ -1,22 +1,74 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { welcome } from "@/lib/copy";
 
+type VerifyResponse = {
+  paid?: boolean;
+  email?: string;
+  name?: string;
+  referralCode?: string;
+  error?: string;
+};
+
 function WelcomeInner() {
   const params = useSearchParams();
-  const email = params.get("email") ?? "your inbox";
+  const sessionId = params.get("session_id");
   const [selected, setSelected] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [status, setStatus] = useState<"loading" | "paid" | "error">("loading");
+  const [email, setEmail] = useState("your inbox");
+  const [referralCode, setReferralCode] = useState("DEMO");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!sessionId) {
+      setStatus("error");
+      setError(
+        "Missing payment confirmation. If you already paid, open the link from your Stripe receipt or return to checkout.",
+      );
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/checkout/verify?session_id=${encodeURIComponent(sessionId)}`,
+        );
+        const data = (await res.json()) as VerifyResponse;
+        if (cancelled) return;
+        if (!res.ok || !data.paid) {
+          setStatus("error");
+          setError(data.error || "We could not confirm your $1 payment yet.");
+          return;
+        }
+        setEmail(data.email || "your inbox");
+        setReferralCode(data.referralCode || sessionId.slice(-8).toUpperCase());
+        setStatus("paid");
+      } catch {
+        if (!cancelled) {
+          setStatus("error");
+          setError("Network error confirming payment. Please refresh in a moment.");
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
 
   const shareUrl = useMemo(() => {
-    if (typeof window === "undefined") return "https://veya.family/join";
-    return `${window.location.origin}/?ref=demo`;
-  }, []);
+    if (typeof window === "undefined") {
+      return `https://veya.family/?ref=${referralCode}`;
+    }
+    return `${window.location.origin}/?ref=${encodeURIComponent(referralCode)}`;
+  }, [referralCode]);
 
   function toggle(option: string) {
     setSelected((prev) =>
@@ -46,6 +98,28 @@ function WelcomeInner() {
     await copyLink();
   }
 
+  if (status === "loading") {
+    return (
+      <div className="shell section" style={{ textAlign: "center" }}>
+        <p className="lede">Confirming your $1 Founding Family payment…</p>
+      </div>
+    );
+  }
+
+  if (status === "error") {
+    return (
+      <div className="shell section" style={{ textAlign: "center", maxWidth: 640 }}>
+        <h1 style={{ fontSize: "clamp(2rem, 5vw, 2.8rem)" }}>Payment not confirmed</h1>
+        <p className="lede" style={{ margin: "1rem auto" }}>
+          {error}
+        </p>
+        <Link href="/founding-family" className="btn btn-primary">
+          Return to checkout
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="shell section" style={{ textAlign: "center", maxWidth: 720 }}>
       <div className="seal" aria-hidden="true">
@@ -60,7 +134,8 @@ function WelcomeInner() {
         {welcome.body}
       </p>
       <p className="microcopy" style={{ marginTop: "0.85rem" }}>
-        We&apos;ll send early-access details to <strong>{email}</strong>.
+        Your $1 payment is confirmed. We&apos;ll send early-access details to{" "}
+        <strong>{email}</strong>.
       </p>
       <p
         className="card"
@@ -105,7 +180,7 @@ function WelcomeInner() {
         </div>
         {submitted ? (
           <p className="microcopy" role="status">
-            Thanks — your preferences are noted for when Stripe and analytics go live.
+            Thanks — we noted your preferences with your Founding Family purchase.
           </p>
         ) : null}
       </section>

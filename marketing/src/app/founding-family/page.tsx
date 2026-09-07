@@ -1,23 +1,36 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
+import { FormEvent, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { checkout, site } from "@/lib/copy";
 
-export default function FoundingFamilyPage() {
-  const router = useRouter();
+function FoundingFamilyInner() {
+  const searchParams = useSearchParams();
+  const canceled = searchParams.get("canceled") === "1";
+  const referredByCode = searchParams.get("ref") ?? undefined;
+
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [consents, setConsents] = useState([false, false, false]);
   const [marketing, setMarketing] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const canceledMessage = useMemo(
+    () =>
+      canceled
+        ? "Checkout was canceled. You can try again whenever you’re ready — nothing was charged."
+        : "",
+    [canceled],
+  );
 
   function toggleConsent(index: number) {
     setConsents((prev) => prev.map((v, i) => (i === index ? !v : v)));
   }
 
-  function onSubmit(e: FormEvent) {
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
 
@@ -30,13 +43,29 @@ export default function FoundingFamilyPage() {
       return;
     }
 
-    const params = new URLSearchParams({
-      email: email.trim(),
-      demo: "1",
-    });
-    if (marketing) params.set("marketing", "1");
-    if (name.trim()) params.set("name", name.trim());
-    router.push(`/welcome/founding-family?${params.toString()}`);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/checkout/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim(),
+          name: name.trim() || undefined,
+          marketingOptIn: marketing,
+          referredByCode,
+        }),
+      });
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !data.url) {
+        setError(data.error || "Unable to start checkout. Please try again.");
+        setLoading(false);
+        return;
+      }
+      window.location.href = data.url;
+    } catch {
+      setError("Network error starting checkout. Please try again.");
+      setLoading(false);
+    }
   }
 
   return (
@@ -47,10 +76,24 @@ export default function FoundingFamilyPage() {
           Secure checkout
         </h1>
         <p className="lede" style={{ marginTop: "0.75rem" }}>
-          Review what you&apos;re joining, then continue. Payment processing will
-          be connected with Stripe later today.
+          Review what you&apos;re joining, then pay $1 once through Stripe. Not a
+          subscription. Parent or guardian checkout required.
         </p>
       </div>
+
+      {(canceledMessage || error) && (
+        <p
+          role="status"
+          className="card"
+          style={{
+            marginTop: "1rem",
+            color: "#9b2c2c",
+            fontWeight: 600,
+          }}
+        >
+          {error || canceledMessage}
+        </p>
+      )}
 
       <div
         className="checkout-layout"
@@ -91,6 +134,7 @@ export default function FoundingFamilyPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="parent@example.com"
+              disabled={loading}
             />
           </div>
 
@@ -104,30 +148,19 @@ export default function FoundingFamilyPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Preferred name"
+              disabled={loading}
             />
           </div>
 
           <div className="pay-placeholder" role="note">
             <strong style={{ color: "var(--veya-forest)" }}>
-              Stripe payment placeholder
+              Secure payment with Stripe
             </strong>
-            <p style={{ marginTop: "0.35rem" }}>{checkout.demoNote}</p>
-            <div className="field-row" style={{ marginTop: "0.85rem" }}>
-              <div className="field">
-                <label htmlFor="card-demo">Card number</label>
-                <input id="card-demo" disabled placeholder="•••• •••• •••• ••••" />
-              </div>
-            </div>
-            <div className="field-row" style={{ marginTop: "0.65rem" }}>
-              <div className="field">
-                <label htmlFor="exp-demo">Expiry</label>
-                <input id="exp-demo" disabled placeholder="MM/YY" />
-              </div>
-              <div className="field">
-                <label htmlFor="cvc-demo">CVC</label>
-                <input id="cvc-demo" disabled placeholder="CVC" />
-              </div>
-            </div>
+            <p style={{ marginTop: "0.35rem" }}>
+              After you confirm the acknowledgements below, you&apos;ll continue to
+              Stripe Checkout to pay $1 once with card, Apple Pay, or Google Pay
+              (where available). Veya never stores your card details.
+            </p>
           </div>
 
           {checkout.consents.map((label, index) => (
@@ -136,6 +169,7 @@ export default function FoundingFamilyPage() {
                 type="checkbox"
                 checked={consents[index]}
                 onChange={() => toggleConsent(index)}
+                disabled={loading}
               />
               <span>
                 {index === 2 ? (
@@ -162,24 +196,38 @@ export default function FoundingFamilyPage() {
               type="checkbox"
               checked={marketing}
               onChange={(e) => setMarketing(e.target.checked)}
+              disabled={loading}
             />
             <span>{checkout.marketingOptIn}</span>
           </label>
 
-          {error ? (
+          {error && !canceledMessage ? (
             <p role="alert" style={{ color: "#9b2c2c", fontWeight: 600 }}>
               {error}
             </p>
           ) : null}
 
-          <button type="submit" className="btn btn-primary" style={{ width: "100%" }}>
-            {checkout.payCta}
+          <button
+            type="submit"
+            className="btn btn-primary"
+            style={{ width: "100%" }}
+            disabled={loading}
+          >
+            {loading ? "Opening Stripe…" : checkout.payCta}
           </button>
           <p className="microcopy" style={{ textAlign: "center" }}>
-            Demo mode — no charge will be made.
+            You will be charged $1.00 USD once. Not a subscription.
           </p>
         </form>
       </div>
     </div>
+  );
+}
+
+export default function FoundingFamilyPage() {
+  return (
+    <Suspense fallback={<div className="shell section">Loading checkout…</div>}>
+      <FoundingFamilyInner />
+    </Suspense>
   );
 }

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Atkinson_Hyperlegible, Nunito } from "next/font/google";
+import { FeedbackWidgets } from "@/components/FeedbackWidgets";
 import "./globals.css";
 
 const nunito = Nunito({
@@ -33,7 +34,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${nunito.variable} ${atkinson.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+      <body className="min-h-full flex flex-col font-sans">
+        {children}
+        <FeedbackWidgets />
+      </body>
     </html>
   );
 }
