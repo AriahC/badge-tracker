@@ -55,6 +55,10 @@ export function FeedbackWidgets() {
     setMessage("");
   }
 
+  if (pathname.startsWith("/hackathon")) {
+    return null;
+  }
+
   const isBug = mode === "bug";
   const title = isBug ? t(lang, "feedbackBugTitle") : t(lang, "feedbackIdeaTitle");
   const hint = isBug ? t(lang, "feedbackBugHint") : t(lang, "feedbackIdeaHint");
