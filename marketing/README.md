@@ -1,6 +1,6 @@
 # Veya Marketing Site
 
-Founding Family early-access marketing funnel (UI-only; Stripe next).
+Founding Family early-access marketing funnel with Stripe Checkout ($1 once).
 
 ## Run
 
@@ -21,15 +21,20 @@ The product app stays on port 3000 in the repo root.
 - `/welcome/founding-family` — confirmation after paid session
 - `/faq`, `/privacy`, `/terms`, `/refunds`, `/contact`, `/parent-support`
 
-## Stripe setup
+## Deploy (separate from the Badge Journey app)
 
-1. Copy `.env.example` → `.env.local`
-2. Paste your Stripe **secret** and **publishable** keys (test keys first)
-3. Set `NEXT_PUBLIC_APP_URL=http://127.0.0.1:3001` locally
-4. Restart `npm run dev`
-5. Use Stripe test card `4242 4242 4242 4242` to complete a $1 payment
+This app is meant to be its **own** Vercel project — do not change the Root Directory of `badge-tracker`.
 
-Live charges require live keys (`sk_live_…`) and a real domain in `NEXT_PUBLIC_APP_URL`.
+1. Import GitHub repo `AriahC/badge-tracker` as a **new** Vercel project named e.g. `veya-marketing`
+2. Set **Root Directory** to `marketing`
+3. Framework: Next.js
+4. Add env vars (Production + Preview):
+   - `STRIPE_SECRET_KEY`
+   - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+   - `NEXT_PUBLIC_APP_URL` = the Vercel URL for this marketing project (e.g. `https://veya-marketing.vercel.app`)
+5. Deploy — Git pushes to `main` will auto-update this project only for the `marketing/` folder when Root Directory is set
+
+Local Stripe setup still uses `.env.local` (see `.env.example`).
 
 ## Source docs
 
