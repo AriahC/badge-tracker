@@ -709,6 +709,93 @@ textarea:focus-visible,
   font-family: var(--font-body) !important;
   font-size: 0.95rem !important;
   color: var(--bj-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  align-items: flex-start;
+}
+
+.mint-ok p {
+  margin: 0 !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.95rem !important;
+}
+
+.mint-wallet-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0.35rem 0 0.35rem;
+}
+
+.mint-wallet-field {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.78rem;
+  margin-bottom: 0.35rem;
+}
+
+.mint-wallet-hint {
+  margin: 0 0 0.35rem !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.85rem !important;
+}
+
+.mint-dest {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  text-align: left;
+}
+
+.mint-step {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.mint-step-label {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--bj-muted);
+}
+
+.mint-step-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.mint-unconfigured {
+  padding: 0.15rem 0 0.25rem;
+}
+
+.mint-dest .primary-btn.wide:not(.permanent) {
+  margin-bottom: 0.05rem;
+}
+
+.mint-wallet-connected {
+  margin: 0 !important;
+  font-size: 0.8rem !important;
+  color: var(--bj-muted);
+  word-break: break-all;
+}
+
+.mint-paste-toggle {
+  margin: 0.05rem 0 0;
+  font-size: 0.85rem;
+}
+
+.mint-dest .permanent {
+  margin-top: 0.1rem;
+}
+
+.celebrate-sheet .mint-dest {
+  margin-top: 0.25rem;
 }
 
 .mono {
@@ -793,6 +880,8 @@ textarea:focus-visible,
   flex-direction: column;
   gap: 0.65rem;
   align-items: stretch;
+  max-height: min(92vh, 40rem);
+  overflow-y: auto;
 }
 
 .celebrate-emoji {

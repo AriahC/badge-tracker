@@ -7,12 +7,23 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "transform:gsusa": "node scripts/transform-gsusa-badges.mjs"
+    "transform:gsusa": "node scripts/transform-gsusa-badges.mjs",
+    "setup:badge-tree": "node scripts/setup-badge-tree.mjs",
+    "setup:badge-tree:wait": "node scripts/wait-and-setup-tree.mjs",
+    "mint:smoke": "node scripts/mint-smoke.mjs",
+    "swig:smoke": "node scripts/swig-smoke.mjs"
   },
   "dependencies": {
+    "@metaplex-foundation/mpl-bubblegum": "^5.1.0",
+    "@metaplex-foundation/umi": "^1.5.1",
+    "@metaplex-foundation/umi-bundle-defaults": "^1.5.1",
+    "@solana/web3.js": "^1.98.4",
+    "@swig-wallet/classic": "^2.1.0",
+    "bs58": "^6.0.0",
     "next": "16.3.4",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

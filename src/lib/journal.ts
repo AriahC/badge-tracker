@@ -160,6 +160,10 @@ export function buildJournalDays(
     .map(([date, dayEvents]) => ({ date, events: dayEvents }));
 }
 
+/** Explorer link for a mint tx signature (or legacy address-looking mock ids). */
 export function explorerUrl(mintAddress: string): string {
-  return `https://explorer.solana.com/address/${encodeURIComponent(mintAddress)}?cluster=devnet`;
+  const looksLikeTx =
+    mintAddress.length >= 64 && !mintAddress.startsWith("devnet-mock-");
+  const kind = looksLikeTx ? "tx" : "address";
+  return `https://explorer.solana.com/${kind}/${encodeURIComponent(mintAddress)}?cluster=devnet`;
 }

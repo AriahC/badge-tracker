@@ -59,6 +59,8 @@ export function completeRequirement(
 export function markMintAttempt(
   badgeId: string,
   status: "pending" | "minted" | "failed",
+  /** On-chain tx signature when status is "minted". */
+  mintSignature?: string,
 ): ProgressState {
   const state = loadProgress();
   const existing = state.earned[badgeId];
@@ -67,8 +69,8 @@ export function markMintAttempt(
     ...existing,
     mintStatus: status,
     mintAddress:
-      status === "minted"
-        ? `devnet-mock-${badgeId.slice(0, 8)}`
+      status === "minted" && mintSignature
+        ? mintSignature
         : existing.mintAddress,
   };
   saveProgress(state);

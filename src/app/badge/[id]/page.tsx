@@ -17,7 +17,8 @@ import {
   loadProgress,
   markMintAttempt,
 } from "@/lib/progress";
-import { loadProfile } from "@/lib/storage";
+import { MintDestinationPanel } from "@/components/MintDestinationPanel";
+import { loadMintWallet, loadProfile, saveMintWallet } from "@/lib/storage";
 import type { Badge, ProgressState, Profile } from "@/lib/types";
 
 export default function BadgeDetailPage() {
@@ -35,6 +36,8 @@ export default function BadgeDetailPage() {
   const [showCelebrate, setShowCelebrate] = useState(false);
   const [mintBusy, setMintBusy] = useState(false);
   const [mintFailed, setMintFailed] = useState(false);
+  const [mintErrorDetail, setMintErrorDetail] = useState<string | null>(null);
+  const [ownerAddress, setOwnerAddress] = useState("");
 
   useEffect(() => {
     const p = loadProfile();
@@ -50,6 +53,9 @@ export default function BadgeDetailPage() {
     }
     setBadge(found);
     setProgress(loadProgress());
+    // Only restore a wallet the user already chose (Swig or paste) — never
+    // prefill DEMO_OWNER so the Swig-first path stays clear for judges.
+    setOwnerAddress(loadMintWallet());
   }, [params.id, router]);
 
   const color = badge ? categoryColor(badge.category) : "#4E86C5";
@@ -99,17 +105,58 @@ export default function BadgeDetailPage() {
     }
   }
 
-  function makePermanent() {
+  async function makePermanent() {
     if (!badge) return;
+    const owner = ownerAddress.trim();
+    if (!owner) {
+      setMintFailed(true);
+      setMintErrorDetail(t(lang, "mintNeedWallet"));
+      return;
+    }
     setMintBusy(true);
     setMintFailed(false);
-    window.setTimeout(() => {
-      // Demo always succeeds; failure UI remains available for polish.
-      const next = markMintAttempt(badge.id, "minted");
+    setMintErrorDetail(null);
+    saveMintWallet(owner);
+    try {
+      const res = await fetch("/api/mint", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ badgeId: badge.id, ownerAddress: owner }),
+      });
+      let data: {
+        signature?: string;
+        explorerUrl?: string;
+        error?: string;
+      } = {};
+      try {
+        data = (await res.json()) as typeof data;
+      } catch {
+        data = {};
+      }
+      if (!res.ok || !data.signature) {
+        markMintAttempt(badge.id, "failed");
+        setMintFailed(true);
+        setMintErrorDetail(
+          data.error ||
+            (res.status === 503
+              ? t(lang, "mintNotConfiguredBody")
+              : t(lang, "mintFailBody")),
+        );
+        setShowCelebrate(false);
+        setMintBusy(false);
+        return;
+      }
+      const next = markMintAttempt(badge.id, "minted", data.signature);
       setProgress(next);
-      setMintBusy(false);
       setShowCelebrate(false);
-    }, 900);
+    } catch {
+      markMintAttempt(badge.id, "failed");
+      setMintFailed(true);
+      setMintErrorDetail(t(lang, "mintFailBody"));
+      setShowCelebrate(false);
+    } finally {
+      setMintBusy(false);
+    }
   }
 
   if (!profile || !badge) {
@@ -203,8 +250,8 @@ export default function BadgeDetailPage() {
         <div className="earn-box">
           <p>{t(lang, "badgeEarnedShort", { name: badge.name })}</p>
           {mintStatus === "minted" && mintAddress ? (
-            <p className="mint-ok">
-              {t(lang, "mintAlreadyDone")}{" "}
+            <div className="mint-ok">
+              <p>{t(lang, "mintSuccess")}</p>
               <a
                 className="journal-explorer"
                 href={explorerUrl(mintAddress)}
@@ -213,21 +260,21 @@ export default function BadgeDetailPage() {
               >
                 {t(lang, "journalViewNft")}
               </a>
-            </p>
+            </div>
           ) : (
-            <button
-              type="button"
-              className="primary-btn wide permanent"
-              onClick={makePermanent}
-              disabled={mintBusy}
-            >
-              {mintBusy ? t(lang, "mintPending") : t(lang, "makePermanent")}
-            </button>
+            <MintDestinationPanel
+              lang={lang}
+              ownerAddress={ownerAddress}
+              onOwnerAddressChange={setOwnerAddress}
+              mintBusy={mintBusy}
+              onMint={() => void makePermanent()}
+              walletInputId="mint-wallet"
+            />
           )}
-          {mintFailed && (
+          {mintFailed && mintStatus !== "minted" && (
             <div className="note-error" role="alert">
               <strong>{t(lang, "mintFailTitle")}</strong>
-              <p>{t(lang, "mintFailBody")}</p>
+              <p>{mintErrorDetail || t(lang, "mintFailBody")}</p>
             </div>
           )}
         </div>
@@ -320,20 +367,24 @@ export default function BadgeDetailPage() {
             </div>
             <h2>{t(lang, "celebrateTitle", { name: badge.name })}</h2>
             <p className="hint">{t(lang, "celebrateBody")}</p>
-            <button
-              type="button"
-              className="primary-btn wide permanent"
-              onClick={makePermanent}
-            >
-              {t(lang, "makePermanent")}
-            </button>
-            <button
-              type="button"
-              className="ghost-btn wide"
-              onClick={() => setShowCelebrate(false)}
-            >
-              {t(lang, "celebrateLater")}
-            </button>
+            <MintDestinationPanel
+              lang={lang}
+              ownerAddress={ownerAddress}
+              onOwnerAddressChange={setOwnerAddress}
+              mintBusy={mintBusy}
+              onMint={() => void makePermanent()}
+              walletInputId="celebrate-mint-wallet"
+              footer={
+                <button
+                  type="button"
+                  className="ghost-btn wide"
+                  onClick={() => setShowCelebrate(false)}
+                  disabled={mintBusy}
+                >
+                  {t(lang, "celebrateLater")}
+                </button>
+              }
+            />
           </div>
         </div>
       )}
