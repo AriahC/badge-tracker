@@ -884,6 +884,10 @@ textarea:focus-visible,
   overflow-y: auto;
 }
 
+.mint-success-sheet .hint {
+  margin-bottom: 0.35rem;
+}
+
 .celebrate-emoji {
   margin: 0;
   font-size: 2.4rem;

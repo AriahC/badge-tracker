@@ -35,10 +35,12 @@ export default function BadgeDetailPage() {
   const [note, setNote] = useState("");
   const [noteError, setNoteError] = useState<"tooShort" | "gibberish" | "unrelated" | null>(null);
   const [showCelebrate, setShowCelebrate] = useState(false);
+  const [showMintSuccess, setShowMintSuccess] = useState(false);
   const [mintBusy, setMintBusy] = useState(false);
   const [mintFailed, setMintFailed] = useState(false);
   const [mintErrorDetail, setMintErrorDetail] = useState<string | null>(null);
   const [ownerAddress, setOwnerAddress] = useState("");
+  const [mintExplorerHref, setMintExplorerHref] = useState<string | null>(null);
 
   useEffect(() => {
     const p = loadProfile();
@@ -158,6 +160,10 @@ export default function BadgeDetailPage() {
       const next = markMintAttempt(badge.id, "minted", data.signature);
       setProgress(next);
       setShowCelebrate(false);
+      setMintExplorerHref(
+        data.explorerUrl ?? explorerUrl(data.signature),
+      );
+      setShowMintSuccess(true);
     } catch {
       markMintAttempt(badge.id, "failed");
       setMintFailed(true);
@@ -394,6 +400,58 @@ export default function BadgeDetailPage() {
                 </button>
               }
             />
+          </div>
+        </div>
+      )}
+
+      {showMintSuccess && mintAddress && (
+        <div className="sheet-backdrop celebrate" role="presentation">
+          <div
+            className="sheet celebrate-sheet mint-success-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mint-success-title"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              className="celebrate-burst"
+              src={decorationSrc("celebration")}
+              alt=""
+              width={180}
+              height={100}
+            />
+            <div className="celebrate-orb">
+              <BadgeOrb
+                iconSlug={badge.iconSlug}
+                color={color}
+                name={badge.name}
+                state="earned"
+                size={96}
+                colorful
+              />
+            </div>
+            <h2 id="mint-success-title">{t(lang, "mintSuccessTitle")}</h2>
+            <p className="hint">
+              {t(lang, "mintSuccessBody", { name: badge.name })}
+            </p>
+            <a
+              className="primary-btn wide"
+              href={mintExplorerHref ?? explorerUrl(mintAddress)}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t(lang, "journalViewNft")}
+            </a>
+            <Link href="/journal" className="ghost-btn wide">
+              {t(lang, "mintSuccessJournal")}
+            </Link>
+            <button
+              type="button"
+              className="ghost-btn wide"
+              onClick={() => setShowMintSuccess(false)}
+            >
+              {t(lang, "mintSuccessDone")}
+            </button>
           </div>
         </div>
       )}
