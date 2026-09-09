@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { BadgeOrb } from "@/components/BadgeOrb";
 import { SpeakButton } from "@/components/SpeakButton";
 import { decorationSrc } from "@/lib/assets";
@@ -23,6 +23,7 @@ import type { Badge, ProgressState, Profile } from "@/lib/types";
 
 export default function BadgeDetailPage() {
   const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [badge, setBadge] = useState<Badge | null>(null);
@@ -52,11 +53,19 @@ export default function BadgeDetailPage() {
       return;
     }
     setBadge(found);
-    setProgress(loadProgress());
-    // Only restore a wallet the user already chose (Swig or paste) — never
-    // prefill DEMO_OWNER so the Swig-first path stays clear for judges.
+    const next = loadProgress();
+    setProgress(next);
     setOwnerAddress(loadMintWallet());
-  }, [params.id, router]);
+    const demoMint = searchParams.get("demo") === "1";
+    const record = next.earned[found.id];
+    if (
+      demoMint &&
+      record &&
+      record.mintStatus !== "minted"
+    ) {
+      setShowCelebrate(true);
+    }
+  }, [params.id, router, searchParams]);
 
   const color = badge ? categoryColor(badge.category) : "#4E86C5";
   const lang = profile?.language ?? "en";

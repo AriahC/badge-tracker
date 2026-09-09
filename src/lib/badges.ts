@@ -76,6 +76,15 @@ export function getBadgeById(id: string): Badge | undefined {
   return ALL_BADGES.find((b) => b.id === id);
 }
 
+/** Prefer Eco Camper for mint demos (Junior outdoor badge judges recognize). */
+export const DEMO_MINT_BADGE_ID = "junior--eco-camper";
+
+export function getDemoMintBadge(): Badge {
+  const eco = getBadgeById(DEMO_MINT_BADGE_ID);
+  if (eco) return eco;
+  return ALL_BADGES[0];
+}
+
 export function getAllBadges(): Badge[] {
   return ALL_BADGES;
 }

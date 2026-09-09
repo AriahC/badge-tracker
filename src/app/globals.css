@@ -1241,6 +1241,39 @@ textarea:focus-visible,
   font-size: 0.88rem;
 }
 
+.demo-mint-card {
+  margin: 0 0 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: var(--bj-radius);
+  background: color-mix(in srgb, var(--bj-outdoors) 10%, var(--bj-card));
+  border: 1.5px solid color-mix(in srgb, var(--bj-outdoors) 35%, var(--bj-border));
+}
+
+.demo-mint-kicker {
+  margin: 0 0 0.2rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bj-outdoors);
+}
+
+.demo-mint-title {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+
+.demo-mint-card .primary-btn {
+  margin-top: 0.65rem;
+}
+
+.how-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 /* Gallery / Journal */
 .gallery-actions {
   display: flex;

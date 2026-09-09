@@ -86,3 +86,29 @@ export function badgeProgressRatio(badge: Badge, state: ProgressState): number {
 export function isBadgeEarned(badgeId: string, state: ProgressState): boolean {
   return Boolean(state.earned[badgeId]);
 }
+
+/**
+ * Hackathon shortcut: mark every requirement done + badge earned so judges
+ * can demo Swig + mint without typing notes.
+ */
+export function seedDemoEarnedBadge(badge: Badge): ProgressState {
+  const state = loadProgress();
+  const now = new Date().toISOString();
+  for (const req of badge.requirements) {
+    if (state.requirements[req.id]) continue;
+    state.requirements[req.id] = {
+      note: "Demo: skipped for minting walkthrough.",
+      completedAt: now,
+    };
+  }
+  const existing = state.earned[badge.id];
+  state.earned[badge.id] = {
+    badgeId: badge.id,
+    earnedAt: existing?.earnedAt ?? now,
+    // Always re-open mint UI for the shortcut (new cNFT each demo mint).
+    mintStatus: "pending",
+    mintAddress: undefined,
+  };
+  saveProgress(state);
+  return state;
+}

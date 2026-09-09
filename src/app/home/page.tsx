@@ -6,10 +6,18 @@ import { BadgeClump } from "@/components/BadgeClump";
 import { BottomNav } from "@/components/BottomNav";
 import { EmptyAdventure } from "@/components/EmptyAdventure";
 import { SpeakButton } from "@/components/SpeakButton";
-import { getBadgesForLevel, groupBadgesByCategory } from "@/lib/badges";
+import {
+  getBadgesForLevel,
+  getDemoMintBadge,
+  groupBadgesByCategory,
+} from "@/lib/badges";
 import { t } from "@/lib/i18n";
 import { clearNotebook } from "@/lib/notebook";
-import { clearProgress, loadProgress } from "@/lib/progress";
+import {
+  clearProgress,
+  loadProgress,
+  seedDemoEarnedBadge,
+} from "@/lib/progress";
 import { clearProfile, loadProfile } from "@/lib/storage";
 import type { Profile, ProgressState } from "@/lib/types";
 
@@ -48,6 +56,12 @@ export default function HomePage() {
     return groupBadgesByCategory(getBadgesForLevel(profile.level));
   }, [profile]);
 
+  function startMintDemo() {
+    const badge = getDemoMintBadge();
+    seedDemoEarnedBadge(badge);
+    router.push(`/badge/${encodeURIComponent(badge.id)}?demo=1`);
+  }
+
   if (!profile) {
     return <div className="screen-loading" />;
   }
@@ -56,6 +70,7 @@ export default function HomePage() {
   const welcome = t(lang, "homeWelcome", { name: profile.childName });
   const subtitle = t(lang, "homeSubtitle", { level: profile.level });
   const speakText = `${welcome} ${subtitle}`;
+  const demoBadge = getDemoMintBadge();
 
   return (
     <div className="home-shell">
@@ -67,6 +82,21 @@ export default function HomePage() {
         </div>
         <SpeakButton text={speakText} language={lang} label={t(lang, "speak")} />
       </header>
+
+      <section className="demo-mint-card" aria-label={t(lang, "demoMintTitle")}>
+        <p className="demo-mint-kicker">{t(lang, "demoMintKicker")}</p>
+        <h2 className="demo-mint-title">{t(lang, "demoMintTitle")}</h2>
+        <p className="hint soft">
+          {t(lang, "demoMintBody", { name: demoBadge.name })}
+        </p>
+        <button
+          type="button"
+          className="primary-btn wide"
+          onClick={startMintDemo}
+        >
+          {t(lang, "demoMintCta", { name: demoBadge.name })}
+        </button>
+      </section>
 
       <div className="clump-stack">
         {groups.length === 0 ? (

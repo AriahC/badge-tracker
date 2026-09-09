@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { EncouragementTip } from "@/components/EncouragementTip";
 import { SpeakButton } from "@/components/SpeakButton";
 import { FEATURE_BADGES, decorationSrc } from "@/lib/assets";
+import { getDemoMintBadge } from "@/lib/badges";
 import { t } from "@/lib/i18n";
+import { seedDemoEarnedBadge } from "@/lib/progress";
 import { loadProfile, updateProfile } from "@/lib/storage";
 import type { Profile } from "@/lib/types";
 
@@ -91,7 +93,7 @@ export default function HowItWorksPage() {
         </section>
       </main>
 
-      <footer className="onboard-footer single">
+      <footer className="onboard-footer how-footer">
         <button
           type="button"
           className="primary-btn wide"
@@ -101,6 +103,18 @@ export default function HowItWorksPage() {
           }}
         >
           {t(lang, "howContinue")}
+        </button>
+        <button
+          type="button"
+          className="ghost-btn wide"
+          onClick={() => {
+            updateProfile({ seenHowItWorks: true });
+            const badge = getDemoMintBadge();
+            seedDemoEarnedBadge(badge);
+            router.push(`/badge/${encodeURIComponent(badge.id)}?demo=1`);
+          }}
+        >
+          {t(lang, "demoMintSkipHow")}
         </button>
       </footer>
     </div>
