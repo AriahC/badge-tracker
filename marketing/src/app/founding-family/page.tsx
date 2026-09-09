@@ -81,9 +81,13 @@ function FoundingFamilyInner() {
   const [hasInjectedWallet, setHasInjectedWallet] = useState(false);
 
   const pollCancelRef = useRef(false);
-  const referenceRef = useRef<PublicKey | null>(null);
+  const referenceRef = useRef<string | null>(null);
+  const payStartedUnixRef = useRef<number>(0);
+  const expectedLamportsRef = useRef<number>(0);
 
   const usd = Math.max(MIN_USD, Number(usdInput) || MIN_USD);
+  const formLocked =
+    loading || qrStatus === "waiting" || qrStatus === "confirming";
 
   const refreshQuote = useCallback(async (amount: number) => {
     setQuoteLoading(true);
@@ -185,6 +189,31 @@ function FoundingFamilyInner() {
     window.location.href = `/welcome/founding-family?${q.toString()}`;
   }
 
+  async function findPaymentOnServer(opts?: {
+    reference?: string | null;
+    sinceUnix?: number;
+    expectedLamports?: number;
+  }): Promise<string | null> {
+    const res = await fetch("/api/checkout/find", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reference: opts?.reference || undefined,
+        sinceUnix: opts?.sinceUnix,
+        expectedLamports: opts?.expectedLamports,
+      }),
+    });
+    const data = (await res.json()) as {
+      found?: boolean;
+      signature?: string;
+      error?: string;
+    };
+    if (!res.ok) {
+      throw new Error(data.error || "Payment lookup failed.");
+    }
+    return data.found && data.signature ? data.signature : null;
+  }
+
   async function startQrPayment() {
     setError("");
     const formError = validateForm();
@@ -205,16 +234,18 @@ function FoundingFamilyInner() {
         throw new Error(q.error || "Could not refresh SOL quote.");
       }
       setQuote(q);
+      expectedLamportsRef.current = q.lamports;
 
       const recipient = q.treasury || TREASURY_ADDRESS;
       const amountSol = (q.lamports / 1e9).toFixed(9);
-      const reference = Keypair.generate().publicKey;
+      const reference = Keypair.generate().publicKey.toBase58();
       referenceRef.current = reference;
+      payStartedUnixRef.current = Math.floor(Date.now() / 1000) - 15;
 
       const urlString = buildSolanaPayTransferUrl({
         recipient,
         amountSol,
-        reference: reference.toBase58(),
+        reference,
         label: "Veya Founding Family",
         message: `$${usd.toFixed(2)} early access — once the app is available`,
       });
@@ -227,27 +258,48 @@ function FoundingFamilyInner() {
       setPayUrl(urlString);
       setQrDataUrl(dataUrl);
       setQrStatus("waiting");
+      setShowManual(true);
       setLoading(false);
 
-      const connection = new Connection(PUBLIC_SOLANA_RPC_URL, "confirmed");
-
-      // Solana Pay wallets include `reference` as a tx account key — poll until it appears.
-      for (;;) {
+      // Poll via server (dedicated RPC) — not the browser public endpoint.
+      // Also fall back to treasury scans: many wallets omit the Solana Pay
+      // reference account, so reference-only polling never completes.
+      for (let attempt = 0; ; attempt += 1) {
         if (pollCancelRef.current) return;
+
         try {
-          const sigs = await connection.getSignaturesForAddress(reference, {
-            limit: 5,
+          const signature = await findPaymentOnServer({
+            reference: referenceRef.current,
+            sinceUnix: payStartedUnixRef.current,
+            // After a few misses, loosen to any ≥ $1 treasury transfer.
+            expectedLamports:
+              attempt < 4 ? expectedLamportsRef.current : undefined,
           });
-          const confirmed = sigs.find((s) => !s.err);
-          if (confirmed) {
+
+          if (signature) {
             setQrStatus("confirming");
-            await verifyAndRedirect(confirmed.signature);
-            setQrStatus("done");
-            return;
+            try {
+              await verifyAndRedirect(signature);
+              setQrStatus("done");
+              return;
+            } catch (verifyErr) {
+              // Do not swallow verify failures inside the find loop.
+              const message =
+                verifyErr instanceof Error
+                  ? verifyErr.message
+                  : "Could not verify payment on Solana.";
+              setError(
+                `${message} If you already paid, paste your transaction signature below.`,
+              );
+              setQrStatus("waiting");
+              setShowManual(true);
+              // Keep polling — tx may still be indexing / price API may recover.
+            }
           }
         } catch {
-          // Transient RPC errors — keep waiting.
+          // Transient find/RPC errors — keep waiting.
         }
+
         await new Promise((r) => setTimeout(r, 2500));
       }
     } catch (err) {
@@ -266,6 +318,59 @@ function FoundingFamilyInner() {
     setPayUrl(null);
     referenceRef.current = null;
     setLoading(false);
+  }
+
+  async function recheckPayment() {
+    setError("");
+    const formError = validateForm();
+    if (formError) {
+      setError(formError);
+      return;
+    }
+    if (manualSig.trim()) {
+      setLoading(true);
+      try {
+        await verifyAndRedirect(manualSig.trim());
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Could not verify that signature.",
+        );
+        setLoading(false);
+      }
+      return;
+    }
+
+    setLoading(true);
+    setQrStatus("confirming");
+    try {
+      const signature = await findPaymentOnServer({
+        reference: referenceRef.current,
+        sinceUnix: payStartedUnixRef.current || Math.floor(Date.now() / 1000) - 60 * 45,
+        expectedLamports: expectedLamportsRef.current || undefined,
+      });
+      if (!signature) {
+        setError(
+          "No matching payment found yet. Keep this page open after paying, or paste the transaction signature from your wallet / explorer.",
+        );
+        setQrStatus(qrDataUrl ? "waiting" : "idle");
+        setShowManual(true);
+        setLoading(false);
+        return;
+      }
+      await verifyAndRedirect(signature);
+      setQrStatus("done");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not confirm payment. Paste your signature to recover.",
+      );
+      setQrStatus(qrDataUrl ? "waiting" : "idle");
+      setShowManual(true);
+      setLoading(false);
+    }
   }
 
   async function onSubmit(e: FormEvent) {
@@ -287,7 +392,6 @@ function FoundingFamilyInner() {
 
       const provider = getProvider();
       if (!provider?.publicKey) {
-        // No extension — fall through to Solana Pay QR (mobile wallets).
         setLoading(false);
         await startQrPayment();
         return;
@@ -304,6 +408,7 @@ function FoundingFamilyInner() {
         return;
       }
       setQuote(q);
+      expectedLamportsRef.current = q.lamports;
 
       const connection = new Connection(PUBLIC_SOLANA_RPC_URL, "confirmed");
       const from = new PublicKey(live.publicKey!.toBase58());
@@ -325,15 +430,27 @@ function FoundingFamilyInner() {
       );
 
       const { signature } = await live.signAndSendTransaction(transaction);
-      await connection.confirmTransaction(
-        { signature, blockhash, lastValidBlockHeight },
-        "confirmed",
-      );
+      setManualSig(signature);
+      setShowManual(true);
+
+      // Confirm is best-effort — public RPC often times out after a successful send.
+      try {
+        await connection.confirmTransaction(
+          { signature, blockhash, lastValidBlockHeight },
+          "confirmed",
+        );
+      } catch {
+        // Fall through to verify; chain truth lives in /api/checkout/verify.
+      }
+
       await verifyAndRedirect(signature);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Payment failed. Please try again.";
-      setError(message);
+      setError(
+        `${message} If the transfer already left your wallet, paste the signature below and verify.`,
+      );
+      setShowManual(true);
       setLoading(false);
     }
   }
@@ -413,7 +530,7 @@ function FoundingFamilyInner() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="parent@example.com"
-              disabled={loading || qrStatus === "waiting" || qrStatus === "confirming"}
+              disabled={formLocked && !showManual}
             />
           </div>
 
@@ -427,7 +544,7 @@ function FoundingFamilyInner() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Preferred name"
-              disabled={loading || qrStatus === "waiting" || qrStatus === "confirming"}
+              disabled={formLocked && !showManual}
             />
           </div>
 
@@ -442,7 +559,7 @@ function FoundingFamilyInner() {
               required
               value={usdInput}
               onChange={(e) => setUsdInput(e.target.value)}
-              disabled={loading || qrStatus === "waiting" || qrStatus === "confirming"}
+              disabled={formLocked && !showManual}
             />
             <div
               style={{
@@ -466,9 +583,7 @@ function FoundingFamilyInner() {
                       usd === amount ? "var(--veya-forest)" : undefined,
                   }}
                   onClick={() => setUsdInput(String(amount))}
-                  disabled={
-                    loading || qrStatus === "waiting" || qrStatus === "confirming"
-                  }
+                  disabled={formLocked && !showManual}
                 >
                   ${amount}
                 </button>
@@ -527,6 +642,15 @@ function FoundingFamilyInner() {
                 ) : null}
                 <button
                   type="button"
+                  className="btn btn-secondary"
+                  style={{ marginTop: "0.5rem", width: "100%" }}
+                  onClick={() => void recheckPayment()}
+                  disabled={loading && qrStatus === "confirming"}
+                >
+                  I already paid — check again
+                </button>
+                <button
+                  type="button"
                   className="btn btn-ghost"
                   style={{ marginTop: "0.5rem" }}
                   onClick={cancelQrPayment}
@@ -561,7 +685,7 @@ function FoundingFamilyInner() {
               className="btn btn-ghost"
               style={{ marginTop: "0.85rem" }}
               onClick={() => void connectWallet()}
-              disabled={loading || qrStatus === "waiting" || qrStatus === "confirming"}
+              disabled={formLocked && !showManual}
             >
               {walletLabel ? `Connected · ${walletLabel}` : "Connect browser wallet"}
             </button>
@@ -573,7 +697,7 @@ function FoundingFamilyInner() {
                 type="checkbox"
                 checked={consents[index]}
                 onChange={() => toggleConsent(index)}
-                disabled={loading || qrStatus === "waiting" || qrStatus === "confirming"}
+                disabled={formLocked && !showManual}
               />
               <span>
                 {index === 2 ? (
@@ -600,7 +724,7 @@ function FoundingFamilyInner() {
               type="checkbox"
               checked={marketing}
               onChange={(e) => setMarketing(e.target.checked)}
-              disabled={loading || qrStatus === "waiting" || qrStatus === "confirming"}
+              disabled={formLocked && !showManual}
             />
             <span>{checkout.marketingOptIn}</span>
           </label>
@@ -610,7 +734,6 @@ function FoundingFamilyInner() {
             className="btn btn-ghost"
             style={{ width: "100%", fontSize: "0.9rem" }}
             onClick={() => setShowManual((v) => !v)}
-            disabled={loading || qrStatus === "waiting" || qrStatus === "confirming"}
           >
             {showManual ? "Hide" : "Already sent SOL?"} Paste transaction signature
           </button>
@@ -625,9 +748,20 @@ function FoundingFamilyInner() {
                 value={manualSig}
                 onChange={(e) => setManualSig(e.target.value)}
                 placeholder="Paste signature from your wallet or explorer"
-                disabled={loading}
+                disabled={loading && qrStatus === "confirming"}
                 autoComplete="off"
               />
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ marginTop: "0.65rem", width: "100%" }}
+                onClick={() => void recheckPayment()}
+                disabled={loading && qrStatus === "confirming"}
+              >
+                {manualSig.trim()
+                  ? "Verify pasted signature →"
+                  : "Re-check on-chain payment →"}
+              </button>
             </div>
           ) : null}
 
@@ -636,10 +770,10 @@ function FoundingFamilyInner() {
             className="btn btn-primary"
             style={{ width: "100%" }}
             disabled={
-              loading ||
               quoteLoading ||
-              qrStatus === "waiting" ||
-              qrStatus === "confirming"
+              qrStatus === "confirming" ||
+              (qrStatus === "waiting" && !manualSig.trim()) ||
+              (loading && !manualSig.trim())
             }
           >
             {loading

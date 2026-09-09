@@ -1,21 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { MIN_USD, PRICE_SLIPPAGE, TREASURY_ADDRESS } from "@/lib/solana-pay";
-
-async function fetchSolUsdPrice(): Promise<number> {
-  const res = await fetch(
-    "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd",
-    { next: { revalidate: 30 } },
-  );
-  if (!res.ok) {
-    throw new Error("Unable to fetch SOL price.");
-  }
-  const data = (await res.json()) as { solana?: { usd?: number } };
-  const price = data.solana?.usd;
-  if (!price || price <= 0) {
-    throw new Error("Invalid SOL price response.");
-  }
-  return price;
-}
+import {
+  MIN_USD,
+  PRICE_SLIPPAGE,
+  TREASURY_ADDRESS,
+  fetchSolUsdPrice,
+} from "@/lib/solana-pay";
 
 export async function GET(request: NextRequest) {
   const usdRaw = Number(request.nextUrl.searchParams.get("usd") ?? MIN_USD);

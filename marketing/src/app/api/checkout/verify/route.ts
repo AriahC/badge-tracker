@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  Connection,
-  PublicKey,
-  type ParsedInstruction,
-  type PartiallyDecodedInstruction,
-} from "@solana/web3.js";
+import { Connection, PublicKey } from "@solana/web3.js";
 import {
   MIN_USD,
-  PRICE_SLIPPAGE,
   SOLANA_RPC_URL,
   TREASURY_ADDRESS,
+  fetchSolUsdPrice,
+  minLamportsForUsd,
+  sumTransfersToTreasury,
 } from "@/lib/solana-pay";
 
 type VerifyInput = {
@@ -17,45 +14,9 @@ type VerifyInput = {
   email: string;
   name?: string;
   marketingOptIn?: boolean;
+  /** Contribution intent (display). Verification only requires ≥ $MIN_USD. */
   usd?: number;
 };
-
-async function fetchSolUsdPrice(): Promise<number> {
-  const res = await fetch(
-    "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd",
-    { cache: "no-store" },
-  );
-  if (!res.ok) throw new Error("Unable to fetch SOL price.");
-  const data = (await res.json()) as { solana?: { usd?: number } };
-  const price = data.solana?.usd;
-  if (!price || price <= 0) throw new Error("Invalid SOL price.");
-  return price;
-}
-
-function isParsed(
-  ix: ParsedInstruction | PartiallyDecodedInstruction,
-): ix is ParsedInstruction {
-  return "parsed" in ix;
-}
-
-function sumTransfersToTreasury(
-  instructions: (ParsedInstruction | PartiallyDecodedInstruction)[],
-  treasury: string,
-): number {
-  let total = 0;
-  for (const ix of instructions) {
-    if (!isParsed(ix)) continue;
-    if (ix.program !== "system" || ix.parsed?.type !== "transfer") continue;
-    const info = ix.parsed.info as {
-      destination?: string;
-      lamports?: number;
-    };
-    if (info.destination === treasury && typeof info.lamports === "number") {
-      total += info.lamports;
-    }
-  }
-  return total;
-}
 
 async function verifyPayment(input: VerifyInput) {
   const signature = input.signature.trim();
@@ -63,10 +24,16 @@ async function verifyPayment(input: VerifyInput) {
   const usd = Math.max(MIN_USD, Number(input.usd) || MIN_USD);
 
   if (!signature) {
-    return NextResponse.json({ error: "Missing transaction signature." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Missing transaction signature." },
+      { status: 400 },
+    );
   }
   if (!email.includes("@")) {
-    return NextResponse.json({ error: "A valid adult email is required." }, { status: 400 });
+    return NextResponse.json(
+      { error: "A valid adult email is required." },
+      { status: 400 },
+    );
   }
 
   const treasury = new PublicKey(TREASURY_ADDRESS);
@@ -101,18 +68,17 @@ async function verifyPayment(input: VerifyInput) {
   }
 
   const solUsd = await fetchSolUsdPrice();
-  const requiredLamports = Math.ceil((usd / solUsd) * 1e9 * (1 - PRICE_SLIPPAGE));
-  const minForOneDollar = Math.ceil((MIN_USD / solUsd) * 1e9 * (1 - PRICE_SLIPPAGE));
-  const threshold = Math.max(requiredLamports, minForOneDollar);
-
-  if (transferred < threshold) {
+  // Accept any treasury transfer ≥ $1 (with slippage). Do not require the form
+  // USD to match — price drift and rounded wallet sends must not block checkout.
+  const minThreshold = minLamportsForUsd(MIN_USD, solUsd);
+  if (transferred < minThreshold) {
     const receivedUsd = (transferred / 1e9) * solUsd;
     return NextResponse.json(
       {
         paid: false,
         error: `Payment too small (~$${receivedUsd.toFixed(2)}). Founding Family requires at least $${MIN_USD}.`,
         transferredLamports: transferred,
-        requiredLamports: threshold,
+        requiredLamports: minThreshold,
       },
       { status: 402 },
     );
@@ -132,6 +98,7 @@ async function verifyPayment(input: VerifyInput) {
     transferredLamports: transferred,
     receivedUsd,
     solUsd,
+    usd,
   });
 }
 
@@ -161,11 +128,16 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const signature = request.nextUrl.searchParams.get("signature")?.trim() ?? "";
   const email =
-    request.nextUrl.searchParams.get("email")?.trim() || "founding@veya.family";
+    request.nextUrl.searchParams.get("email")?.trim() ||
+    "founding@veya.family";
   const usd = Number(request.nextUrl.searchParams.get("usd") ?? MIN_USD);
 
   try {
-    return await verifyPayment({ signature, email, usd });
+    return await verifyPayment({
+      signature,
+      email,
+      usd,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Verification failed.";
     console.error("[checkout/verify]", message);
