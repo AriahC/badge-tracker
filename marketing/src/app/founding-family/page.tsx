@@ -20,7 +20,9 @@ import {
 import QRCode from "qrcode";
 import { checkout, site } from "@/lib/copy";
 import {
+  FALLBACK_SOL_USD,
   MIN_USD,
+  PRICE_SLIPPAGE,
   PUBLIC_SOLANA_RPC_URL,
   TREASURY_ADDRESS,
   buildSolanaPayTransferUrl,
@@ -33,6 +35,8 @@ type Quote = {
   solAmount: number;
   lamports: number;
   note?: string;
+  source?: string;
+  approximate?: boolean;
   error?: string;
 };
 
@@ -66,6 +70,7 @@ function FoundingFamilyInner() {
   const [consents, setConsents] = useState([false, false, false]);
   const [marketing, setMarketing] = useState(false);
   const [error, setError] = useState("");
+  const [quoteNotice, setQuoteNotice] = useState("");
   const [qrInlineError, setQrInlineError] = useState("");
   const [loading, setLoading] = useState(false);
   const [walletLabel, setWalletLabel] = useState<string | null>(null);
@@ -95,28 +100,41 @@ function FoundingFamilyInner() {
   const consentsRef = useRef(consents);
   const marketingRef = useRef(marketing);
   const usdRef = useRef(usd);
+  const quoteRef = useRef<Quote | null>(null);
   emailRef.current = email;
   nameRef.current = name;
   consentsRef.current = consents;
   marketingRef.current = marketing;
   usdRef.current = usd;
+  quoteRef.current = quote;
 
   const refreshQuote = useCallback(async (amount: number) => {
     setQuoteLoading(true);
     try {
       const res = await fetch(
         `/api/checkout/quote?usd=${encodeURIComponent(amount)}`,
+        { signal: AbortSignal.timeout(12000) },
       );
       const data = (await res.json()) as Quote;
-      if (!res.ok) {
-        setQuote(null);
-        setError(data.error || "Could not load SOL quote.");
+      if (!res.ok || !data.lamports) {
+        // Keep the last good quote so Show QR is never bricked by a refresh miss.
+        setQuoteNotice(
+          data.error ||
+            "Could not refresh the live SOL quote. You can still show a QR; we'll retry when you tap.",
+        );
         return;
       }
       setQuote(data);
+      quoteRef.current = data;
+      setQuoteNotice(
+        data.approximate
+          ? "SOL/USD is approximate right now. The QR still works — verification allows price slippage."
+          : "",
+      );
     } catch {
-      setQuote(null);
-      setError("Could not load SOL quote. Please try again.");
+      setQuoteNotice(
+        "Could not refresh the live SOL quote. You can still show a QR; we'll retry when you tap.",
+      );
     } finally {
       setQuoteLoading(false);
     }
@@ -163,6 +181,63 @@ function FoundingFamilyInner() {
 
   function validateForm(): string | null {
     return validateQuoteAmount() || validateMembership();
+  }
+
+  function quoteMatchesUsd(q: Quote | null, amount: number): q is Quote {
+    return Boolean(
+      q &&
+        q.lamports > 0 &&
+        Number.isFinite(q.lamports) &&
+        Math.abs(q.usd - amount) < 0.005,
+    );
+  }
+
+  async function loadQuoteForPayment(amount: number): Promise<Quote> {
+    try {
+      const quoteRes = await fetch(
+        `/api/checkout/quote?usd=${encodeURIComponent(amount)}`,
+        { signal: AbortSignal.timeout(20000) },
+      );
+      const q = (await quoteRes.json()) as Quote;
+      if (quoteRes.ok && q.lamports) {
+        setQuote(q);
+        quoteRef.current = q;
+        setQuoteNotice(
+          q.approximate
+            ? "SOL/USD is approximate right now. You can still pay — verification allows price slippage."
+            : "",
+        );
+        return q;
+      }
+    } catch {
+      // Fall through to last good quote.
+    }
+
+    const cached = quoteRef.current;
+    if (quoteMatchesUsd(cached, amount)) {
+      setQuoteNotice(
+        "Using the last SOL quote. You can still pay — tap again if you want a fresh amount.",
+      );
+      return cached;
+    }
+
+    const quotePrice = FALLBACK_SOL_USD * (1 - PRICE_SLIPPAGE / 2);
+    const lamports = Math.ceil((amount / quotePrice) * 1e9);
+    const fallback: Quote = {
+      treasury: TREASURY_ADDRESS,
+      usd: amount,
+      solUsd: quotePrice,
+      solAmount: lamports / 1e9,
+      lamports,
+      approximate: true,
+      source: "client-fallback",
+    };
+    setQuote(fallback);
+    quoteRef.current = fallback;
+    setQuoteNotice(
+      "Using an approximate SOL amount so you can still pay. Verification allows price slippage.",
+    );
+    return fallback;
   }
 
   async function connectWallet() {
@@ -256,15 +331,7 @@ function FoundingFamilyInner() {
     pollCancelRef.current = false;
 
     try {
-      const quoteRes = await fetch(
-        `/api/checkout/quote?usd=${encodeURIComponent(usd)}`,
-        { signal: AbortSignal.timeout(20000) },
-      );
-      const q = (await quoteRes.json()) as Quote;
-      if (!quoteRes.ok || !q.lamports) {
-        throw new Error(q.error || "Could not refresh SOL quote.");
-      }
-      setQuote(q);
+      const q = await loadQuoteForPayment(usd);
       expectedLamportsRef.current = q.lamports;
 
       const recipient = q.treasury || TREASURY_ADDRESS;
@@ -442,16 +509,7 @@ function FoundingFamilyInner() {
       }
 
       const live = provider;
-      const quoteRes = await fetch(
-        `/api/checkout/quote?usd=${encodeURIComponent(usd)}`,
-      );
-      const q = (await quoteRes.json()) as Quote;
-      if (!quoteRes.ok || !q.lamports) {
-        setError(q.error || "Could not refresh SOL quote.");
-        setLoading(false);
-        return;
-      }
-      setQuote(q);
+      const q = await loadQuoteForPayment(usd);
       expectedLamportsRef.current = q.lamports;
 
       const connection = new Connection(PUBLIC_SOLANA_RPC_URL, "confirmed");
@@ -637,12 +695,17 @@ function FoundingFamilyInner() {
               {quoteLoading
                 ? "Updating SOL quote…"
                 : quote
-                  ? `≈ ${quote.solAmount.toFixed(6)} SOL at ~$${quote.solUsd.toFixed(2)}/SOL`
+                  ? `≈ ${quote.solAmount.toFixed(6)} SOL at ~$${quote.solUsd.toFixed(2)}/SOL${quote.approximate ? " (approximate)" : ""}`
                   : `Minimum $${MIN_USD}.`}{" "}
               Enter any amount from ${MIN_USD} up — contribute as much as
               you&apos;d like. ${MIN_USD} gets early access once the app is
               available.
             </p>
+            {quoteNotice ? (
+              <p className="microcopy" style={{ marginTop: "0.35rem" }}>
+                {quoteNotice}
+              </p>
+            ) : null}
           </div>
 
           {checkout.consents.map((label, index) => (
