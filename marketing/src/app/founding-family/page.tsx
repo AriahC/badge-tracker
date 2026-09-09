@@ -66,6 +66,7 @@ function FoundingFamilyInner() {
   const [consents, setConsents] = useState([false, false, false]);
   const [marketing, setMarketing] = useState(false);
   const [error, setError] = useState("");
+  const [qrInlineError, setQrInlineError] = useState("");
   const [loading, setLoading] = useState(false);
   const [walletLabel, setWalletLabel] = useState<string | null>(null);
   const [quote, setQuote] = useState<Quote | null>(null);
@@ -80,14 +81,25 @@ function FoundingFamilyInner() {
   >("idle");
   const [hasInjectedWallet, setHasInjectedWallet] = useState(false);
 
-  const pollCancelRef = useRef(false);
-  const referenceRef = useRef<string | null>(null);
-  const payStartedUnixRef = useRef<number>(0);
-  const expectedLamportsRef = useRef<number>(0);
-
   const usd = Math.max(MIN_USD, Number(usdInput) || MIN_USD);
   const formLocked =
     loading || qrStatus === "waiting" || qrStatus === "confirming";
+
+  const pollCancelRef = useRef(false);
+  const qrStartingRef = useRef(false);
+  const referenceRef = useRef<string | null>(null);
+  const payStartedUnixRef = useRef<number>(0);
+  const expectedLamportsRef = useRef<number>(0);
+  const emailRef = useRef(email);
+  const nameRef = useRef(name);
+  const consentsRef = useRef(consents);
+  const marketingRef = useRef(marketing);
+  const usdRef = useRef(usd);
+  emailRef.current = email;
+  nameRef.current = name;
+  consentsRef.current = consents;
+  marketingRef.current = marketing;
+  usdRef.current = usd;
 
   const refreshQuote = useCallback(async (amount: number) => {
     setQuoteLoading(true);
@@ -102,7 +114,6 @@ function FoundingFamilyInner() {
         return;
       }
       setQuote(data);
-      setError("");
     } catch {
       setQuote(null);
       setError("Could not load SOL quote. Please try again.");
@@ -132,17 +143,26 @@ function FoundingFamilyInner() {
     setConsents((prev) => prev.map((v, i) => (i === index ? !v : v)));
   }
 
-  function validateForm(): string | null {
-    if (!email.trim() || !email.includes("@")) {
-      return "Please enter a valid adult email address.";
-    }
+  function validateQuoteAmount(): string | null {
     if (usd < MIN_USD) {
       return `Founding Family contributions start at $${MIN_USD}.`;
     }
-    if (consents.some((c) => !c)) {
+    return null;
+  }
+
+  function validateMembership(): string | null {
+    const currentEmail = emailRef.current;
+    if (!currentEmail.trim() || !currentEmail.includes("@")) {
+      return "Please enter a valid adult email address.";
+    }
+    if (consentsRef.current.some((c) => !c)) {
       return "Please confirm all required acknowledgements.";
     }
     return null;
+  }
+
+  function validateForm(): string | null {
+    return validateQuoteAmount() || validateMembership();
   }
 
   async function connectWallet() {
@@ -165,15 +185,17 @@ function FoundingFamilyInner() {
   }
 
   async function verifyAndRedirect(signature: string) {
+    const currentEmail = emailRef.current.trim();
+    const currentUsd = usdRef.current;
     const res = await fetch("/api/checkout/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         signature,
-        email: email.trim(),
-        name: name.trim() || undefined,
-        marketingOptIn: marketing,
-        usd,
+        email: currentEmail,
+        name: nameRef.current.trim() || undefined,
+        marketingOptIn: marketingRef.current,
+        usd: currentUsd,
         referredByCode,
       }),
     });
@@ -183,8 +205,8 @@ function FoundingFamilyInner() {
     }
     const q = new URLSearchParams({
       signature,
-      email: email.trim(),
-      usd: String(usd),
+      email: currentEmail,
+      usd: String(currentUsd),
     });
     window.location.href = `/welcome/founding-family?${q.toString()}`;
   }
@@ -215,19 +237,28 @@ function FoundingFamilyInner() {
   }
 
   async function startQrPayment() {
+    if (qrStatus === "waiting" || qrStatus === "confirming") {
+      return;
+    }
     setError("");
+    setQrInlineError("");
     const formError = validateForm();
     if (formError) {
-      setError(formError);
+      setQrInlineError(formError);
+      return;
+    }
+    if (qrStartingRef.current) {
       return;
     }
 
+    qrStartingRef.current = true;
     setLoading(true);
     pollCancelRef.current = false;
 
     try {
       const quoteRes = await fetch(
         `/api/checkout/quote?usd=${encodeURIComponent(usd)}`,
+        { signal: AbortSignal.timeout(20000) },
       );
       const q = (await quoteRes.json()) as Quote;
       if (!quoteRes.ok || !q.lamports) {
@@ -260,6 +291,7 @@ function FoundingFamilyInner() {
       setQrStatus("waiting");
       setShowManual(true);
       setLoading(false);
+      qrStartingRef.current = false;
 
       // Poll via server (dedicated RPC) — not the browser public endpoint.
       // Also fall back to treasury scans: many wallets omit the Solana Pay
@@ -304,26 +336,35 @@ function FoundingFamilyInner() {
       }
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Could not start QR payment.";
-      setError(message);
+        err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")
+          ? "Timed out loading the SOL quote. Tap again to retry."
+          : err instanceof Error
+            ? err.message
+            : "Could not start QR payment.";
+      setQrInlineError(message);
       setQrStatus("idle");
       setLoading(false);
+      qrStartingRef.current = false;
     }
   }
 
   function cancelQrPayment() {
     pollCancelRef.current = true;
+    qrStartingRef.current = false;
     setQrStatus("idle");
     setQrDataUrl(null);
     setPayUrl(null);
+    setQrInlineError("");
     referenceRef.current = null;
     setLoading(false);
   }
 
   async function recheckPayment() {
     setError("");
+    setQrInlineError("");
     const formError = validateForm();
     if (formError) {
+      setQrInlineError(formError);
       setError(formError);
       return;
     }
@@ -376,10 +417,12 @@ function FoundingFamilyInner() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
+    setQrInlineError("");
 
     const formError = validateForm();
     if (formError) {
       setError(formError);
+      setQrInlineError(formError);
       return;
     }
 
@@ -393,6 +436,7 @@ function FoundingFamilyInner() {
       const provider = getProvider();
       if (!provider?.publicKey) {
         setLoading(false);
+        qrStartingRef.current = false;
         await startQrPayment();
         return;
       }
@@ -601,14 +645,55 @@ function FoundingFamilyInner() {
             </p>
           </div>
 
-          <div className="pay-placeholder" role="note">
+          {checkout.consents.map((label, index) => (
+            <label key={label} className="consent">
+              <input
+                type="checkbox"
+                checked={consents[index]}
+                onChange={() => toggleConsent(index)}
+                disabled={formLocked && !showManual}
+              />
+              <span>
+                {index === 2 ? (
+                  <>
+                    I agree to the{" "}
+                    <Link href="/terms" style={{ textDecoration: "underline" }}>
+                      Early Access Terms
+                    </Link>{" "}
+                    and{" "}
+                    <Link href="/privacy" style={{ textDecoration: "underline" }}>
+                      Privacy Policy
+                    </Link>
+                    .
+                  </>
+                ) : (
+                  label
+                )}
+              </span>
+            </label>
+          ))}
+
+          <div className="pay-placeholder">
             <strong style={{ color: "var(--veya-forest)" }}>
               Mobile wallet — scan to pay
             </strong>
             <p style={{ marginTop: "0.35rem" }}>
-              Confirm the acknowledgements below, then show a Solana Pay QR.
+              Confirm the acknowledgements above, then show a Solana Pay QR.
               Open Phantom (or another Solana wallet) on your phone and scan it.
             </p>
+
+            {qrInlineError ? (
+              <p
+                role="alert"
+                style={{
+                  marginTop: "0.75rem",
+                  color: "#9b2c2c",
+                  fontWeight: 600,
+                }}
+              >
+                {qrInlineError}
+              </p>
+            ) : null}
 
             {qrDataUrl && (qrStatus === "waiting" || qrStatus === "confirming") ? (
               <div style={{ marginTop: "1rem", textAlign: "center" }}>
@@ -663,10 +748,15 @@ function FoundingFamilyInner() {
                 type="button"
                 className="btn btn-secondary"
                 style={{ marginTop: "0.85rem", width: "100%" }}
-                onClick={() => void startQrPayment()}
-                disabled={loading || quoteLoading}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  void startQrPayment();
+                }}
               >
-                Show QR for mobile wallet
+                {loading && qrStatus === "idle"
+                  ? "Preparing QR…"
+                  : "Show QR for mobile wallet"}
               </button>
             )}
           </div>
@@ -690,34 +780,6 @@ function FoundingFamilyInner() {
               {walletLabel ? `Connected · ${walletLabel}` : "Connect browser wallet"}
             </button>
           </div>
-
-          {checkout.consents.map((label, index) => (
-            <label key={label} className="consent">
-              <input
-                type="checkbox"
-                checked={consents[index]}
-                onChange={() => toggleConsent(index)}
-                disabled={formLocked && !showManual}
-              />
-              <span>
-                {index === 2 ? (
-                  <>
-                    I agree to the{" "}
-                    <Link href="/terms" style={{ textDecoration: "underline" }}>
-                      Early Access Terms
-                    </Link>{" "}
-                    and{" "}
-                    <Link href="/privacy" style={{ textDecoration: "underline" }}>
-                      Privacy Policy
-                    </Link>
-                    .
-                  </>
-                ) : (
-                  label
-                )}
-              </span>
-            </label>
-          ))}
 
           <label className="consent">
             <input
@@ -770,7 +832,6 @@ function FoundingFamilyInner() {
             className="btn btn-primary"
             style={{ width: "100%" }}
             disabled={
-              quoteLoading ||
               qrStatus === "confirming" ||
               (qrStatus === "waiting" && !manualSig.trim()) ||
               (loading && !manualSig.trim())

@@ -162,6 +162,12 @@ p {
   transform: translateY(-1px);
 }
 
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .btn-primary {
   background: var(--veya-forest);
   color: #fffdf8;
