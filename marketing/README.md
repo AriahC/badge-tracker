@@ -26,6 +26,7 @@ The product app stays on port 3000 in the repo root.
 - Treasury: `R9wEoz95MmM5uqgn1iuxqcgxeqakyeMnRVaXY1xEh9P` (overridable via `NEXT_PUBLIC_SOLANA_TREASURY_ADDRESS`)
 - Minimum: $1 USD equivalent in SOL (live quote via CoinGecko)
 - Copy promise: **$1 gets early access to the app once it's available**
+- Pay via browser wallet **or** Solana Pay QR (scan with Phantom on mobile)
 
 ## Deploy (separate from the Badge Journey app)
 

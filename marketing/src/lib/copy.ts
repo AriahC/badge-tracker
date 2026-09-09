@@ -264,7 +264,7 @@ export const faqItems = [
   },
   {
     q: "How do I pay?",
-    a: "Founding Family payments are Solana-only. Connect a wallet such as Phantom and send the SOL equivalent of $1 or more to Veya's published treasury address. We confirm the transfer on-chain.",
+    a: "Founding Family payments are Solana-only. On a phone, scan the Solana Pay QR with Phantom (or another Solana wallet). On a computer, connect a browser wallet or scan the QR with your phone. We confirm the transfer on-chain.",
   },
   {
     q: "Is the $1 a subscription?",

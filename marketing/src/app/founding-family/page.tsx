@@ -1,16 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useCallback, useEffect, useState, Suspense } from "react";
+import {
+  FormEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  Suspense,
+} from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Connection,
+  Keypair,
   PublicKey,
   SystemProgram,
   Transaction,
 } from "@solana/web3.js";
+import QRCode from "qrcode";
 import { checkout, site } from "@/lib/copy";
-import { MIN_USD, TREASURY_ADDRESS } from "@/lib/solana-pay";
+import {
+  MIN_USD,
+  PUBLIC_SOLANA_RPC_URL,
+  TREASURY_ADDRESS,
+  buildSolanaPayTransferUrl,
+} from "@/lib/solana-pay";
 
 type Quote = {
   treasury: string;
@@ -25,7 +39,9 @@ type Quote = {
 type SolanaProvider = {
   isPhantom?: boolean;
   publicKey?: { toBase58: () => string };
-  connect: (opts?: { onlyIfTrusted?: boolean }) => Promise<{ publicKey: { toBase58: () => string } }>;
+  connect: (opts?: {
+    onlyIfTrusted?: boolean;
+  }) => Promise<{ publicKey: { toBase58: () => string } }>;
   signAndSendTransaction: (
     transaction: Transaction,
   ) => Promise<{ signature: string }>;
@@ -33,7 +49,10 @@ type SolanaProvider = {
 
 function getProvider(): SolanaProvider | null {
   if (typeof window === "undefined") return null;
-  const w = window as Window & { solana?: SolanaProvider; phantom?: { solana?: SolanaProvider } };
+  const w = window as Window & {
+    solana?: SolanaProvider;
+    phantom?: { solana?: SolanaProvider };
+  };
   return w.phantom?.solana ?? w.solana ?? null;
 }
 
@@ -54,12 +73,24 @@ function FoundingFamilyInner() {
   const [manualSig, setManualSig] = useState("");
   const [showManual, setShowManual] = useState(false);
 
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [payUrl, setPayUrl] = useState<string | null>(null);
+  const [qrStatus, setQrStatus] = useState<
+    "idle" | "waiting" | "confirming" | "done"
+  >("idle");
+  const [hasInjectedWallet, setHasInjectedWallet] = useState(false);
+
+  const pollCancelRef = useRef(false);
+  const referenceRef = useRef<PublicKey | null>(null);
+
   const usd = Math.max(MIN_USD, Number(usdInput) || MIN_USD);
 
   const refreshQuote = useCallback(async (amount: number) => {
     setQuoteLoading(true);
     try {
-      const res = await fetch(`/api/checkout/quote?usd=${encodeURIComponent(amount)}`);
+      const res = await fetch(
+        `/api/checkout/quote?usd=${encodeURIComponent(amount)}`,
+      );
       const data = (await res.json()) as Quote;
       if (!res.ok) {
         setQuote(null);
@@ -83,8 +114,31 @@ function FoundingFamilyInner() {
     return () => window.clearTimeout(t);
   }, [usd, refreshQuote]);
 
+  useEffect(() => {
+    setHasInjectedWallet(Boolean(getProvider()));
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      pollCancelRef.current = true;
+    };
+  }, []);
+
   function toggleConsent(index: number) {
     setConsents((prev) => prev.map((v, i) => (i === index ? !v : v)));
+  }
+
+  function validateForm(): string | null {
+    if (!email.trim() || !email.includes("@")) {
+      return "Please enter a valid adult email address.";
+    }
+    if (usd < MIN_USD) {
+      return `Founding Family contributions start at $${MIN_USD}.`;
+    }
+    if (consents.some((c) => !c)) {
+      return "Please confirm all required acknowledgements.";
+    }
+    return null;
   }
 
   async function connectWallet() {
@@ -92,15 +146,15 @@ function FoundingFamilyInner() {
     const provider = getProvider();
     if (!provider) {
       setError(
-        "No Solana wallet found. Install Phantom (or another Solana wallet), then refresh this page.",
+        "No browser wallet detected. Use the QR code with Phantom (or another mobile Solana wallet), or install a browser extension.",
       );
-      setShowManual(true);
       return;
     }
     try {
       const res = await provider.connect();
       const key = res.publicKey.toBase58();
       setWalletLabel(`${key.slice(0, 4)}…${key.slice(-4)}`);
+      setHasInjectedWallet(true);
     } catch {
       setError("Wallet connection was canceled.");
     }
@@ -131,20 +185,96 @@ function FoundingFamilyInner() {
     window.location.href = `/welcome/founding-family?${q.toString()}`;
   }
 
+  async function startQrPayment() {
+    setError("");
+    const formError = validateForm();
+    if (formError) {
+      setError(formError);
+      return;
+    }
+
+    setLoading(true);
+    pollCancelRef.current = false;
+
+    try {
+      const quoteRes = await fetch(
+        `/api/checkout/quote?usd=${encodeURIComponent(usd)}`,
+      );
+      const q = (await quoteRes.json()) as Quote;
+      if (!quoteRes.ok || !q.lamports) {
+        throw new Error(q.error || "Could not refresh SOL quote.");
+      }
+      setQuote(q);
+
+      const recipient = q.treasury || TREASURY_ADDRESS;
+      const amountSol = (q.lamports / 1e9).toFixed(9);
+      const reference = Keypair.generate().publicKey;
+      referenceRef.current = reference;
+
+      const urlString = buildSolanaPayTransferUrl({
+        recipient,
+        amountSol,
+        reference: reference.toBase58(),
+        label: "Veya Founding Family",
+        message: `$${usd.toFixed(2)} early access — once the app is available`,
+      });
+      const dataUrl = await QRCode.toDataURL(urlString, {
+        width: 320,
+        margin: 2,
+        color: { dark: "#1f3d2a", light: "#ffffff" },
+      });
+
+      setPayUrl(urlString);
+      setQrDataUrl(dataUrl);
+      setQrStatus("waiting");
+      setLoading(false);
+
+      const connection = new Connection(PUBLIC_SOLANA_RPC_URL, "confirmed");
+
+      // Solana Pay wallets include `reference` as a tx account key — poll until it appears.
+      for (;;) {
+        if (pollCancelRef.current) return;
+        try {
+          const sigs = await connection.getSignaturesForAddress(reference, {
+            limit: 5,
+          });
+          const confirmed = sigs.find((s) => !s.err);
+          if (confirmed) {
+            setQrStatus("confirming");
+            await verifyAndRedirect(confirmed.signature);
+            setQrStatus("done");
+            return;
+          }
+        } catch {
+          // Transient RPC errors — keep waiting.
+        }
+        await new Promise((r) => setTimeout(r, 2500));
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Could not start QR payment.";
+      setError(message);
+      setQrStatus("idle");
+      setLoading(false);
+    }
+  }
+
+  function cancelQrPayment() {
+    pollCancelRef.current = true;
+    setQrStatus("idle");
+    setQrDataUrl(null);
+    setPayUrl(null);
+    referenceRef.current = null;
+    setLoading(false);
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
 
-    if (!email.trim() || !email.includes("@")) {
-      setError("Please enter a valid adult email address.");
-      return;
-    }
-    if (usd < MIN_USD) {
-      setError(`Founding Family contributions start at $${MIN_USD}.`);
-      return;
-    }
-    if (consents.some((c) => !c)) {
-      setError("Please confirm all required acknowledgements.");
+    const formError = validateForm();
+    if (formError) {
+      setError(formError);
       return;
     }
 
@@ -157,24 +287,16 @@ function FoundingFamilyInner() {
 
       const provider = getProvider();
       if (!provider?.publicKey) {
-        await connectWallet();
-        const again = getProvider();
-        if (!again?.publicKey) {
-          setError("Connect a Solana wallet to pay, or paste a transaction signature below.");
-          setShowManual(true);
-          setLoading(false);
-          return;
-        }
-      }
-
-      const live = getProvider();
-      if (!live?.publicKey) {
-        setError("Wallet not connected.");
+        // No extension — fall through to Solana Pay QR (mobile wallets).
         setLoading(false);
+        await startQrPayment();
         return;
       }
 
-      const quoteRes = await fetch(`/api/checkout/quote?usd=${encodeURIComponent(usd)}`);
+      const live = provider;
+      const quoteRes = await fetch(
+        `/api/checkout/quote?usd=${encodeURIComponent(usd)}`,
+      );
       const q = (await quoteRes.json()) as Quote;
       if (!quoteRes.ok || !q.lamports) {
         setError(q.error || "Could not refresh SOL quote.");
@@ -183,11 +305,8 @@ function FoundingFamilyInner() {
       }
       setQuote(q);
 
-      const rpc =
-        process.env.NEXT_PUBLIC_SOLANA_RPC_URL?.trim() ||
-        "https://api.mainnet-beta.solana.com";
-      const connection = new Connection(rpc, "confirmed");
-      const from = new PublicKey(live.publicKey.toBase58());
+      const connection = new Connection(PUBLIC_SOLANA_RPC_URL, "confirmed");
+      const from = new PublicKey(live.publicKey!.toBase58());
       const to = new PublicKey(q.treasury || TREASURY_ADDRESS);
 
       const { blockhash, lastValidBlockHeight } =
@@ -228,8 +347,8 @@ function FoundingFamilyInner() {
         </h1>
         <p className="lede" style={{ marginTop: "0.75rem" }}>
           Contribute $1 or more in SOL. Your $1 gets early access to the app once
-          it&apos;s available. One-time — not a subscription. Parent or guardian
-          checkout required.
+          it&apos;s available. Pay from a browser wallet or scan a QR with Phantom
+          on your phone. One-time — not a subscription.
         </p>
       </div>
 
@@ -292,7 +411,7 @@ function FoundingFamilyInner() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="parent@example.com"
-              disabled={loading}
+              disabled={loading || qrStatus === "waiting" || qrStatus === "confirming"}
             />
           </div>
 
@@ -306,7 +425,7 @@ function FoundingFamilyInner() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Preferred name"
-              disabled={loading}
+              disabled={loading || qrStatus === "waiting" || qrStatus === "confirming"}
             />
           </div>
 
@@ -321,7 +440,7 @@ function FoundingFamilyInner() {
               required
               value={usdInput}
               onChange={(e) => setUsdInput(e.target.value)}
-              disabled={loading}
+              disabled={loading || qrStatus === "waiting" || qrStatus === "confirming"}
             />
             <p className="microcopy" style={{ marginTop: "0.35rem" }}>
               {quoteLoading
@@ -329,27 +448,89 @@ function FoundingFamilyInner() {
                 : quote
                   ? `≈ ${quote.solAmount.toFixed(6)} SOL at ~$${quote.solUsd.toFixed(2)}/SOL`
                   : `Minimum $${MIN_USD}.`}{" "}
-              ${MIN_USD} gets early access once the app is available; you may contribute more.
+              ${MIN_USD} gets early access once the app is available; you may
+              contribute more.
             </p>
           </div>
 
           <div className="pay-placeholder" role="note">
             <strong style={{ color: "var(--veya-forest)" }}>
-              Pay with a Solana wallet
+              Mobile wallet — scan to pay
             </strong>
             <p style={{ marginTop: "0.35rem" }}>
-              Connect Phantom (or another Solana wallet) and send SOL to Veya&apos;s
-              treasury. We confirm the transfer on-chain — no cards, no
-              subscription.
+              Confirm the acknowledgements below, then show a Solana Pay QR.
+              Open Phantom (or another Solana wallet) on your phone and scan it.
+            </p>
+
+            {qrDataUrl && (qrStatus === "waiting" || qrStatus === "confirming") ? (
+              <div style={{ marginTop: "1rem", textAlign: "center" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={qrDataUrl}
+                  alt="Solana Pay QR code — scan with your mobile wallet"
+                  width={280}
+                  height={280}
+                  style={{
+                    margin: "0 auto",
+                    borderRadius: "0.75rem",
+                    background: "#fff",
+                  }}
+                />
+                <p className="microcopy" style={{ marginTop: "0.75rem" }}>
+                  {qrStatus === "waiting"
+                    ? "Waiting for payment… keep this page open after you scan."
+                    : "Payment seen — confirming on Solana…"}
+                </p>
+                {payUrl ? (
+                  <p style={{ marginTop: "0.5rem" }}>
+                    <a
+                      href={payUrl}
+                      className="btn btn-secondary"
+                      style={{ display: "inline-flex" }}
+                    >
+                      Open in wallet app
+                    </a>
+                  </p>
+                ) : null}
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  style={{ marginTop: "0.5rem" }}
+                  onClick={cancelQrPayment}
+                >
+                  Cancel QR payment
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ marginTop: "0.85rem", width: "100%" }}
+                onClick={() => void startQrPayment()}
+                disabled={loading || quoteLoading}
+              >
+                Show QR for mobile wallet
+              </button>
+            )}
+          </div>
+
+          <div className="pay-placeholder" role="note">
+            <strong style={{ color: "var(--veya-forest)" }}>
+              Browser wallet (optional)
+            </strong>
+            <p style={{ marginTop: "0.35rem" }}>
+              {hasInjectedWallet
+                ? "A Solana extension was detected. Connect it, then use Pay with Solana below."
+                : "No browser extension detected — that’s fine. Use the QR above with your phone."}
             </p>
             <button
               type="button"
-              className="btn btn-secondary"
+              className="btn btn-ghost"
               style={{ marginTop: "0.85rem" }}
               onClick={() => void connectWallet()}
-              disabled={loading}
+              disabled={loading || qrStatus === "waiting" || qrStatus === "confirming"}
             >
-              {walletLabel ? `Connected · ${walletLabel}` : "Connect wallet"}
+              {walletLabel ? `Connected · ${walletLabel}` : "Connect browser wallet"}
             </button>
           </div>
 
@@ -359,7 +540,7 @@ function FoundingFamilyInner() {
                 type="checkbox"
                 checked={consents[index]}
                 onChange={() => toggleConsent(index)}
-                disabled={loading}
+                disabled={loading || qrStatus === "waiting" || qrStatus === "confirming"}
               />
               <span>
                 {index === 2 ? (
@@ -386,7 +567,7 @@ function FoundingFamilyInner() {
               type="checkbox"
               checked={marketing}
               onChange={(e) => setMarketing(e.target.checked)}
-              disabled={loading}
+              disabled={loading || qrStatus === "waiting" || qrStatus === "confirming"}
             />
             <span>{checkout.marketingOptIn}</span>
           </label>
@@ -396,7 +577,7 @@ function FoundingFamilyInner() {
             className="btn btn-ghost"
             style={{ width: "100%", fontSize: "0.9rem" }}
             onClick={() => setShowManual((v) => !v)}
-            disabled={loading}
+            disabled={loading || qrStatus === "waiting" || qrStatus === "confirming"}
           >
             {showManual ? "Hide" : "Already sent SOL?"} Paste transaction signature
           </button>
@@ -421,16 +602,24 @@ function FoundingFamilyInner() {
             type="submit"
             className="btn btn-primary"
             style={{ width: "100%" }}
-            disabled={loading || quoteLoading}
+            disabled={
+              loading ||
+              quoteLoading ||
+              qrStatus === "waiting" ||
+              qrStatus === "confirming"
+            }
           >
             {loading
               ? "Confirming on Solana…"
               : showManual && manualSig.trim()
                 ? "Verify payment →"
-                : checkout.payCta}
+                : hasInjectedWallet
+                  ? checkout.payCta
+                  : "Pay with QR / wallet →"}
           </button>
           <p className="microcopy" style={{ textAlign: "center" }}>
-            One-time SOL payment · ${MIN_USD}+ · early access when the app is available
+            One-time SOL payment · ${MIN_USD}+ · early access when the app is
+            available
           </p>
         </form>
       </div>
