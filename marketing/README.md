@@ -1,6 +1,6 @@
 # Veya Marketing Site
 
-Founding Family early-access marketing funnel with Stripe Checkout ($1 once).
+Founding Family early-access marketing funnel with Solana payments ($1+ USD in SOL).
 
 ## Run
 
@@ -17,9 +17,15 @@ The product app stays on port 3000 in the repo root.
 ## Routes
 
 - `/` — homepage
-- `/founding-family` — checkout (Stripe Checkout, $1 once)
-- `/welcome/founding-family` — confirmation after paid session
+- `/founding-family` — Solana checkout ($1+ in SOL to treasury)
+- `/welcome/founding-family` — confirmation after on-chain verify
 - `/faq`, `/privacy`, `/terms`, `/refunds`, `/contact`, `/parent-support`
+
+## Payments
+
+- Treasury: `R9wEoz95MmM5uqgn1iuxqcgxeqakyeMnRVaXY1xEh9P` (overridable via `NEXT_PUBLIC_SOLANA_TREASURY_ADDRESS`)
+- Minimum: $1 USD equivalent in SOL (live quote via CoinGecko)
+- Copy promise: **$1 gets early access to the app once it's available**
 
 ## Deploy (separate from the Badge Journey app)
 
@@ -29,12 +35,11 @@ This app is meant to be its **own** Vercel project — do not change the Root Di
 2. Set **Root Directory** to `marketing`
 3. Framework: Next.js
 4. Add env vars (Production + Preview):
-   - `STRIPE_SECRET_KEY`
-   - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
-   - `NEXT_PUBLIC_APP_URL` = the Vercel URL for this marketing project (e.g. `https://veya-marketing.vercel.app`)
+   - `NEXT_PUBLIC_APP_URL` = the Vercel URL for this marketing project
+   - Optional: `SOLANA_RPC_URL` / `NEXT_PUBLIC_SOLANA_RPC_URL` for a dedicated RPC
 5. Deploy — Git pushes to `main` will auto-update this project only for the `marketing/` folder when Root Directory is set
 
-Local Stripe setup still uses `.env.local` (see `.env.example`).
+See `.env.example` for local setup.
 
 ## Source docs
 

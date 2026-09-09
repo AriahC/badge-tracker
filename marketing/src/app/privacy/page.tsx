@@ -13,10 +13,10 @@ export default function PrivacyPage() {
       </p>
       <h2>What we collect on this site</h2>
       <p>
-        When payment is enabled, we will collect adult purchaser contact details
-        needed to process the $1 early-access purchase and send transactional
-        updates. Payment card details are handled by the payment provider and are
-        not stored by Veya.
+        We collect adult purchaser contact details needed to record the Founding
+        Family contribution and send transactional updates. Payments are made in
+        SOL on Solana to Veya&apos;s treasury wallet; Veya does not collect or store
+        card details.
       </p>
       <h2>Children</h2>
       <p>

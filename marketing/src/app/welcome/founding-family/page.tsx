@@ -1,22 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
 import { welcome } from "@/lib/copy";
+import { EXPLORER_TX_BASE } from "@/lib/solana-pay";
 
 type VerifyResponse = {
   paid?: boolean;
   email?: string;
   name?: string;
   referralCode?: string;
+  signature?: string;
+  receivedUsd?: number;
   error?: string;
 };
 
 function WelcomeInner() {
   const params = useSearchParams();
-  const sessionId = params.get("session_id");
+  const signature = params.get("signature");
+  const emailParam = params.get("email") ?? "";
+  const usdParam = params.get("usd");
+
   const [selected, setSelected] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -24,12 +29,13 @@ function WelcomeInner() {
   const [email, setEmail] = useState("your inbox");
   const [referralCode, setReferralCode] = useState("DEMO");
   const [error, setError] = useState("");
+  const [txSig, setTxSig] = useState("");
 
   useEffect(() => {
-    if (!sessionId) {
+    if (!signature) {
       setStatus("error");
       setError(
-        "Missing payment confirmation. If you already paid, open the link from your Stripe receipt or return to checkout.",
+        "Missing Solana transaction. If you already paid, paste your signature on the checkout page or return to try again.",
       );
       return;
     }
@@ -37,18 +43,24 @@ function WelcomeInner() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(
-          `/api/checkout/verify?session_id=${encodeURIComponent(sessionId)}`,
-        );
+        const q = new URLSearchParams({
+          signature,
+          email: emailParam || "founding@veya.family",
+        });
+        if (usdParam) q.set("usd", usdParam);
+        const res = await fetch(`/api/checkout/verify?${q.toString()}`);
         const data = (await res.json()) as VerifyResponse;
         if (cancelled) return;
         if (!res.ok || !data.paid) {
           setStatus("error");
-          setError(data.error || "We could not confirm your $1 payment yet.");
+          setError(data.error || "We could not confirm your Solana payment yet.");
           return;
         }
-        setEmail(data.email || "your inbox");
-        setReferralCode(data.referralCode || sessionId.slice(-8).toUpperCase());
+        setEmail(data.email || emailParam || "your inbox");
+        setReferralCode(
+          data.referralCode || signature.slice(0, 8).toUpperCase(),
+        );
+        setTxSig(data.signature || signature);
         setStatus("paid");
       } catch {
         if (!cancelled) {
@@ -61,7 +73,7 @@ function WelcomeInner() {
     return () => {
       cancelled = true;
     };
-  }, [sessionId]);
+  }, [signature, emailParam, usdParam]);
 
   const shareUrl = useMemo(() => {
     if (typeof window === "undefined") {
@@ -101,7 +113,7 @@ function WelcomeInner() {
   if (status === "loading") {
     return (
       <div className="shell section" style={{ textAlign: "center" }}>
-        <p className="lede">Confirming your $1 Founding Family payment…</p>
+        <p className="lede">Confirming your Founding Family payment on Solana…</p>
       </div>
     );
   }
@@ -134,9 +146,21 @@ function WelcomeInner() {
         {welcome.body}
       </p>
       <p className="microcopy" style={{ marginTop: "0.85rem" }}>
-        Your $1 payment is confirmed. We&apos;ll send early-access details to{" "}
-        <strong>{email}</strong>.
+        Your Solana payment is confirmed. We&apos;ll email early-access details to{" "}
+        <strong>{email}</strong> once the app is available.
       </p>
+      {txSig ? (
+        <p className="microcopy" style={{ marginTop: "0.5rem" }}>
+          <a
+            href={`${EXPLORER_TX_BASE}/${txSig}`}
+            target="_blank"
+            rel="noreferrer"
+            style={{ textDecoration: "underline" }}
+          >
+            View transaction on Solana Explorer
+          </a>
+        </p>
+      ) : null}
       <p
         className="card"
         style={{

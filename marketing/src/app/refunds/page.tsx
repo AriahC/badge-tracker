@@ -13,8 +13,9 @@ export default function RefundsPage() {
         <a href={`mailto:${site.supportEmail}`}>{site.supportEmail}</a>.
       </p>
       <p>
-        Once Stripe is connected, refunds will be processed through the payment
-        provider.
+        Solana contributions are on-chain. Refunds, when approved, are arranged
+        manually by contacting{" "}
+        <a href={`mailto:${site.supportEmail}`}>{site.supportEmail}</a>.
       </p>
     </div>
   );

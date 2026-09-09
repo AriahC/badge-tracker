@@ -1,69 +1,173 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  FOUNDING_FAMILY_AMOUNT_CENTS,
-  FOUNDING_FAMILY_CURRENCY,
-  getStripe,
-} from "@/lib/stripe";
+  Connection,
+  PublicKey,
+  type ParsedInstruction,
+  type PartiallyDecodedInstruction,
+} from "@solana/web3.js";
+import {
+  MIN_USD,
+  PRICE_SLIPPAGE,
+  SOLANA_RPC_URL,
+  TREASURY_ADDRESS,
+} from "@/lib/solana-pay";
 
-export async function GET(request: NextRequest) {
-  const sessionId = request.nextUrl.searchParams.get("session_id")?.trim();
-  if (!sessionId) {
+type VerifyInput = {
+  signature: string;
+  email: string;
+  name?: string;
+  marketingOptIn?: boolean;
+  usd?: number;
+};
+
+async function fetchSolUsdPrice(): Promise<number> {
+  const res = await fetch(
+    "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd",
+    { cache: "no-store" },
+  );
+  if (!res.ok) throw new Error("Unable to fetch SOL price.");
+  const data = (await res.json()) as { solana?: { usd?: number } };
+  const price = data.solana?.usd;
+  if (!price || price <= 0) throw new Error("Invalid SOL price.");
+  return price;
+}
+
+function isParsed(
+  ix: ParsedInstruction | PartiallyDecodedInstruction,
+): ix is ParsedInstruction {
+  return "parsed" in ix;
+}
+
+function sumTransfersToTreasury(
+  instructions: (ParsedInstruction | PartiallyDecodedInstruction)[],
+  treasury: string,
+): number {
+  let total = 0;
+  for (const ix of instructions) {
+    if (!isParsed(ix)) continue;
+    if (ix.program !== "system" || ix.parsed?.type !== "transfer") continue;
+    const info = ix.parsed.info as {
+      destination?: string;
+      lamports?: number;
+    };
+    if (info.destination === treasury && typeof info.lamports === "number") {
+      total += info.lamports;
+    }
+  }
+  return total;
+}
+
+async function verifyPayment(input: VerifyInput) {
+  const signature = input.signature.trim();
+  const email = input.email.trim().toLowerCase();
+  const usd = Math.max(MIN_USD, Number(input.usd) || MIN_USD);
+
+  if (!signature) {
+    return NextResponse.json({ error: "Missing transaction signature." }, { status: 400 });
+  }
+  if (!email.includes("@")) {
+    return NextResponse.json({ error: "A valid adult email is required." }, { status: 400 });
+  }
+
+  const treasury = new PublicKey(TREASURY_ADDRESS);
+  const connection = new Connection(SOLANA_RPC_URL, "confirmed");
+  const tx = await connection.getParsedTransaction(signature, {
+    maxSupportedTransactionVersion: 0,
+    commitment: "confirmed",
+  });
+
+  if (!tx || tx.meta?.err) {
     return NextResponse.json(
-      { error: "Missing session_id." },
-      { status: 400 },
+      { paid: false, error: "Transaction not found or failed on Solana." },
+      { status: 402 },
     );
   }
 
+  const messageIxs = tx.transaction.message.instructions;
+  const innerIxs =
+    tx.meta?.innerInstructions?.flatMap((group) => group.instructions) ?? [];
+  const transferred =
+    sumTransfersToTreasury(messageIxs, treasury.toBase58()) +
+    sumTransfersToTreasury(innerIxs, treasury.toBase58());
+
+  if (transferred <= 0) {
+    return NextResponse.json(
+      {
+        paid: false,
+        error: `No SOL transfer to treasury ${TREASURY_ADDRESS} found in this transaction.`,
+      },
+      { status: 402 },
+    );
+  }
+
+  const solUsd = await fetchSolUsdPrice();
+  const requiredLamports = Math.ceil((usd / solUsd) * 1e9 * (1 - PRICE_SLIPPAGE));
+  const minForOneDollar = Math.ceil((MIN_USD / solUsd) * 1e9 * (1 - PRICE_SLIPPAGE));
+  const threshold = Math.max(requiredLamports, minForOneDollar);
+
+  if (transferred < threshold) {
+    const receivedUsd = (transferred / 1e9) * solUsd;
+    return NextResponse.json(
+      {
+        paid: false,
+        error: `Payment too small (~$${receivedUsd.toFixed(2)}). Founding Family requires at least $${MIN_USD}.`,
+        transferredLamports: transferred,
+        requiredLamports: threshold,
+      },
+      { status: 402 },
+    );
+  }
+
+  const receivedUsd = (transferred / 1e9) * solUsd;
+  const referralCode = signature.slice(0, 8).toUpperCase();
+
+  return NextResponse.json({
+    paid: true,
+    email,
+    name: input.name?.trim() || "",
+    marketingOptIn: Boolean(input.marketingOptIn),
+    referralCode,
+    signature,
+    treasury: TREASURY_ADDRESS,
+    transferredLamports: transferred,
+    receivedUsd,
+    solUsd,
+  });
+}
+
+export async function POST(request: NextRequest) {
+  let body: VerifyInput;
   try {
-    const stripe = getStripe();
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    body = (await request.json()) as VerifyInput;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
 
-    const paid =
-      session.payment_status === "paid" ||
-      session.status === "complete";
-    const amountOk =
-      session.amount_total === FOUNDING_FAMILY_AMOUNT_CENTS &&
-      session.currency === FOUNDING_FAMILY_CURRENCY;
-    const productOk = session.metadata?.product === "founding_family";
-
-    if (!paid || !amountOk || !productOk) {
-      return NextResponse.json(
-        {
-          paid: false,
-          error: "This checkout session is not a completed $1 Founding Family purchase.",
-        },
-        { status: 402 },
-      );
-    }
-
-    const email =
-      session.customer_details?.email ||
-      session.customer_email ||
-      session.metadata?.adult_email ||
-      "";
-    const name =
-      session.customer_details?.name ||
-      session.metadata?.adult_name ||
-      "";
-    const marketingOptIn = session.metadata?.marketing_opt_in === "1";
-    const referralCode = session.id.slice(-8).toUpperCase();
-
-    return NextResponse.json({
-      paid: true,
-      email,
-      name,
-      marketingOptIn,
-      referralCode,
-      amountTotal: session.amount_total,
-      currency: session.currency,
-      paymentIntentId:
-        typeof session.payment_intent === "string"
-          ? session.payment_intent
-          : session.payment_intent?.id ?? null,
+  try {
+    return await verifyPayment({
+      signature: body.signature ?? "",
+      email: body.email ?? "",
+      name: body.name,
+      marketingOptIn: body.marketingOptIn,
+      usd: body.usd,
     });
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Unable to verify checkout.";
+    const message = err instanceof Error ? err.message : "Verification failed.";
+    console.error("[checkout/verify]", message);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function GET(request: NextRequest) {
+  const signature = request.nextUrl.searchParams.get("signature")?.trim() ?? "";
+  const email =
+    request.nextUrl.searchParams.get("email")?.trim() || "founding@veya.family";
+  const usd = Number(request.nextUrl.searchParams.get("usd") ?? MIN_USD);
+
+  try {
+    return await verifyPayment({ signature, email, usd });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Verification failed.";
     console.error("[checkout/verify]", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }

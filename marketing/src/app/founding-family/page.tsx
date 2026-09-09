@@ -1,33 +1,134 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import {
+  Connection,
+  PublicKey,
+  SystemProgram,
+  Transaction,
+} from "@solana/web3.js";
 import { checkout, site } from "@/lib/copy";
+import { MIN_USD, TREASURY_ADDRESS } from "@/lib/solana-pay";
+
+type Quote = {
+  treasury: string;
+  usd: number;
+  solUsd: number;
+  solAmount: number;
+  lamports: number;
+  note?: string;
+  error?: string;
+};
+
+type SolanaProvider = {
+  isPhantom?: boolean;
+  publicKey?: { toBase58: () => string };
+  connect: (opts?: { onlyIfTrusted?: boolean }) => Promise<{ publicKey: { toBase58: () => string } }>;
+  signAndSendTransaction: (
+    transaction: Transaction,
+  ) => Promise<{ signature: string }>;
+};
+
+function getProvider(): SolanaProvider | null {
+  if (typeof window === "undefined") return null;
+  const w = window as Window & { solana?: SolanaProvider; phantom?: { solana?: SolanaProvider } };
+  return w.phantom?.solana ?? w.solana ?? null;
+}
 
 function FoundingFamilyInner() {
   const searchParams = useSearchParams();
-  const canceled = searchParams.get("canceled") === "1";
   const referredByCode = searchParams.get("ref") ?? undefined;
 
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [usdInput, setUsdInput] = useState(String(MIN_USD));
   const [consents, setConsents] = useState([false, false, false]);
   const [marketing, setMarketing] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [walletLabel, setWalletLabel] = useState<string | null>(null);
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [manualSig, setManualSig] = useState("");
+  const [showManual, setShowManual] = useState(false);
 
-  const canceledMessage = useMemo(
-    () =>
-      canceled
-        ? "Checkout was canceled. You can try again whenever you’re ready — nothing was charged."
-        : "",
-    [canceled],
-  );
+  const usd = Math.max(MIN_USD, Number(usdInput) || MIN_USD);
+
+  const refreshQuote = useCallback(async (amount: number) => {
+    setQuoteLoading(true);
+    try {
+      const res = await fetch(`/api/checkout/quote?usd=${encodeURIComponent(amount)}`);
+      const data = (await res.json()) as Quote;
+      if (!res.ok) {
+        setQuote(null);
+        setError(data.error || "Could not load SOL quote.");
+        return;
+      }
+      setQuote(data);
+      setError("");
+    } catch {
+      setQuote(null);
+      setError("Could not load SOL quote. Please try again.");
+    } finally {
+      setQuoteLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      void refreshQuote(usd);
+    }, 280);
+    return () => window.clearTimeout(t);
+  }, [usd, refreshQuote]);
 
   function toggleConsent(index: number) {
     setConsents((prev) => prev.map((v, i) => (i === index ? !v : v)));
+  }
+
+  async function connectWallet() {
+    setError("");
+    const provider = getProvider();
+    if (!provider) {
+      setError(
+        "No Solana wallet found. Install Phantom (or another Solana wallet), then refresh this page.",
+      );
+      setShowManual(true);
+      return;
+    }
+    try {
+      const res = await provider.connect();
+      const key = res.publicKey.toBase58();
+      setWalletLabel(`${key.slice(0, 4)}…${key.slice(-4)}`);
+    } catch {
+      setError("Wallet connection was canceled.");
+    }
+  }
+
+  async function verifyAndRedirect(signature: string) {
+    const res = await fetch("/api/checkout/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        signature,
+        email: email.trim(),
+        name: name.trim() || undefined,
+        marketingOptIn: marketing,
+        usd,
+        referredByCode,
+      }),
+    });
+    const data = (await res.json()) as { paid?: boolean; error?: string };
+    if (!res.ok || !data.paid) {
+      throw new Error(data.error || "Could not verify payment on Solana.");
+    }
+    const q = new URLSearchParams({
+      signature,
+      email: email.trim(),
+      usd: String(usd),
+    });
+    window.location.href = `/welcome/founding-family?${q.toString()}`;
   }
 
   async function onSubmit(e: FormEvent) {
@@ -38,6 +139,10 @@ function FoundingFamilyInner() {
       setError("Please enter a valid adult email address.");
       return;
     }
+    if (usd < MIN_USD) {
+      setError(`Founding Family contributions start at $${MIN_USD}.`);
+      return;
+    }
     if (consents.some((c) => !c)) {
       setError("Please confirm all required acknowledgements.");
       return;
@@ -45,25 +150,71 @@ function FoundingFamilyInner() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/checkout/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: email.trim(),
-          name: name.trim() || undefined,
-          marketingOptIn: marketing,
-          referredByCode,
-        }),
-      });
-      const data = (await res.json()) as { url?: string; error?: string };
-      if (!res.ok || !data.url) {
-        setError(data.error || "Unable to start checkout. Please try again.");
+      if (showManual && manualSig.trim()) {
+        await verifyAndRedirect(manualSig.trim());
+        return;
+      }
+
+      const provider = getProvider();
+      if (!provider?.publicKey) {
+        await connectWallet();
+        const again = getProvider();
+        if (!again?.publicKey) {
+          setError("Connect a Solana wallet to pay, or paste a transaction signature below.");
+          setShowManual(true);
+          setLoading(false);
+          return;
+        }
+      }
+
+      const live = getProvider();
+      if (!live?.publicKey) {
+        setError("Wallet not connected.");
         setLoading(false);
         return;
       }
-      window.location.href = data.url;
-    } catch {
-      setError("Network error starting checkout. Please try again.");
+
+      const quoteRes = await fetch(`/api/checkout/quote?usd=${encodeURIComponent(usd)}`);
+      const q = (await quoteRes.json()) as Quote;
+      if (!quoteRes.ok || !q.lamports) {
+        setError(q.error || "Could not refresh SOL quote.");
+        setLoading(false);
+        return;
+      }
+      setQuote(q);
+
+      const rpc =
+        process.env.NEXT_PUBLIC_SOLANA_RPC_URL?.trim() ||
+        "https://api.mainnet-beta.solana.com";
+      const connection = new Connection(rpc, "confirmed");
+      const from = new PublicKey(live.publicKey.toBase58());
+      const to = new PublicKey(q.treasury || TREASURY_ADDRESS);
+
+      const { blockhash, lastValidBlockHeight } =
+        await connection.getLatestBlockhash("confirmed");
+
+      const transaction = new Transaction({
+        feePayer: from,
+        blockhash,
+        lastValidBlockHeight,
+      }).add(
+        SystemProgram.transfer({
+          fromPubkey: from,
+          toPubkey: to,
+          lamports: q.lamports,
+        }),
+      );
+
+      const { signature } = await live.signAndSendTransaction(transaction);
+      await connection.confirmTransaction(
+        { signature, blockhash, lastValidBlockHeight },
+        "confirmed",
+      );
+      await verifyAndRedirect(signature);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Payment failed. Please try again.";
+      setError(message);
       setLoading(false);
     }
   }
@@ -73,15 +224,16 @@ function FoundingFamilyInner() {
       <div className="page-hero" style={{ paddingTop: 0 }}>
         <p className="eyebrow">FOUNDING FAMILY</p>
         <h1 style={{ fontSize: "clamp(2.2rem, 5vw, 3.2rem)" }}>
-          Secure checkout
+          Pay with Solana
         </h1>
         <p className="lede" style={{ marginTop: "0.75rem" }}>
-          Review what you&apos;re joining, then pay $1 once through Stripe. Not a
-          subscription. Parent or guardian checkout required.
+          Contribute $1 or more in SOL. Your $1 gets early access to the app once
+          it&apos;s available. One-time — not a subscription. Parent or guardian
+          checkout required.
         </p>
       </div>
 
-      {(canceledMessage || error) && (
+      {error ? (
         <p
           role="status"
           className="card"
@@ -91,9 +243,9 @@ function FoundingFamilyInner() {
             fontWeight: 600,
           }}
         >
-          {error || canceledMessage}
+          {error}
         </p>
-      )}
+      ) : null}
 
       <div
         className="checkout-layout"
@@ -118,7 +270,13 @@ function FoundingFamilyInner() {
           </ul>
           <p className="quiet">{site.developmentStatus}</p>
           <p className="quiet" style={{ marginTop: "0.5rem" }}>
-            $1 once. Not a subscription. Parent or guardian checkout required.
+            Paid in SOL on Solana mainnet. Minimum ${MIN_USD} USD equivalent.
+          </p>
+          <p
+            className="microcopy"
+            style={{ marginTop: "0.75rem", wordBreak: "break-all" }}
+          >
+            Treasury: {TREASURY_ADDRESS}
           </p>
         </aside>
 
@@ -152,15 +310,47 @@ function FoundingFamilyInner() {
             />
           </div>
 
+          <div className="field">
+            <label htmlFor="usd-amount">Contribution (USD)</label>
+            <input
+              id="usd-amount"
+              name="usd"
+              type="number"
+              min={MIN_USD}
+              step="0.01"
+              required
+              value={usdInput}
+              onChange={(e) => setUsdInput(e.target.value)}
+              disabled={loading}
+            />
+            <p className="microcopy" style={{ marginTop: "0.35rem" }}>
+              {quoteLoading
+                ? "Updating SOL quote…"
+                : quote
+                  ? `≈ ${quote.solAmount.toFixed(6)} SOL at ~$${quote.solUsd.toFixed(2)}/SOL`
+                  : `Minimum $${MIN_USD}.`}{" "}
+              ${MIN_USD} gets early access once the app is available; you may contribute more.
+            </p>
+          </div>
+
           <div className="pay-placeholder" role="note">
             <strong style={{ color: "var(--veya-forest)" }}>
-              Secure payment with Stripe
+              Pay with a Solana wallet
             </strong>
             <p style={{ marginTop: "0.35rem" }}>
-              After you confirm the acknowledgements below, you&apos;ll continue to
-              Stripe Checkout to pay $1 once with card, Apple Pay, or Google Pay
-              (where available). Veya never stores your card details.
+              Connect Phantom (or another Solana wallet) and send SOL to Veya&apos;s
+              treasury. We confirm the transfer on-chain — no cards, no
+              subscription.
             </p>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ marginTop: "0.85rem" }}
+              onClick={() => void connectWallet()}
+              disabled={loading}
+            >
+              {walletLabel ? `Connected · ${walletLabel}` : "Connect wallet"}
+            </button>
           </div>
 
           {checkout.consents.map((label, index) => (
@@ -201,22 +391,46 @@ function FoundingFamilyInner() {
             <span>{checkout.marketingOptIn}</span>
           </label>
 
-          {error && !canceledMessage ? (
-            <p role="alert" style={{ color: "#9b2c2c", fontWeight: 600 }}>
-              {error}
-            </p>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ width: "100%", fontSize: "0.9rem" }}
+            onClick={() => setShowManual((v) => !v)}
+            disabled={loading}
+          >
+            {showManual ? "Hide" : "Already sent SOL?"} Paste transaction signature
+          </button>
+
+          {showManual ? (
+            <div className="field">
+              <label htmlFor="tx-sig">Solana transaction signature</label>
+              <input
+                id="tx-sig"
+                name="signature"
+                type="text"
+                value={manualSig}
+                onChange={(e) => setManualSig(e.target.value)}
+                placeholder="Paste signature from your wallet or explorer"
+                disabled={loading}
+                autoComplete="off"
+              />
+            </div>
           ) : null}
 
           <button
             type="submit"
             className="btn btn-primary"
             style={{ width: "100%" }}
-            disabled={loading}
+            disabled={loading || quoteLoading}
           >
-            {loading ? "Opening Stripe…" : checkout.payCta}
+            {loading
+              ? "Confirming on Solana…"
+              : showManual && manualSig.trim()
+                ? "Verify payment →"
+                : checkout.payCta}
           </button>
           <p className="microcopy" style={{ textAlign: "center" }}>
-            You will be charged $1.00 USD once. Not a subscription.
+            One-time SOL payment · ${MIN_USD}+ · early access when the app is available
           </p>
         </form>
       </div>

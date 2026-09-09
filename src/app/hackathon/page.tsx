@@ -1,13 +1,20 @@
 import Image from "next/image";
 
+/** Marketing site on team vercel-mvnxyzs-projects / project veya-marketing */
 const WAITLIST_URL =
   process.env.NEXT_PUBLIC_WAITLIST_URL ??
   "https://veya-marketing-eta.vercel.app";
 
-const DEMO_URL =
-  process.env.NEXT_PUBLIC_DEMO_URL ?? "https://badge-tracker-two.vercel.app";
+/**
+ * App demo lives on the same Vercel project as this page:
+ * team vercel-mvnxyzs-projects / project veya
+ * Prefer same-origin `/` so we never point at the old ariahs-projects URL.
+ */
+const DEMO_URL = process.env.NEXT_PUBLIC_DEMO_URL ?? "/";
 
 export default function HackathonPage() {
+  const demoIsExternal = /^https?:\/\//i.test(DEMO_URL);
+
   return (
     <main className="hackathon-shell">
       <section className="hackathon-hero" aria-labelledby="veya-brand">
@@ -33,8 +40,9 @@ export default function HackathonPage() {
             <a
               className="hackathon-btn hackathon-btn-secondary"
               href={DEMO_URL}
-              target="_blank"
-              rel="noopener noreferrer"
+              {...(demoIsExternal
+                ? { target: "_blank", rel: "noopener noreferrer" }
+                : {})}
             >
               App demo
             </a>
