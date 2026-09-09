@@ -346,9 +346,10 @@ function FoundingFamilyInner() {
           Pay with Solana
         </h1>
         <p className="lede" style={{ marginTop: "0.75rem" }}>
-          Contribute $1 or more in SOL. Your $1 gets early access to the app once
-          it&apos;s available. Pay from a browser wallet or scan a QR with Phantom
-          on your phone. One-time — not a subscription.
+          Contribute as much as you&apos;d like in SOL — $1 minimum. That $1 gets
+          early access to the app once it&apos;s available. Pay from a browser
+          wallet or scan a QR with Phantom on your phone. One-time — not a
+          subscription.
         </p>
       </div>
 
@@ -389,7 +390,8 @@ function FoundingFamilyInner() {
           </ul>
           <p className="quiet">{site.developmentStatus}</p>
           <p className="quiet" style={{ marginTop: "0.5rem" }}>
-            Paid in SOL on Solana mainnet. Minimum ${MIN_USD} USD equivalent.
+            Paid in SOL on Solana mainnet. Minimum ${MIN_USD} — contribute any
+            amount above that.
           </p>
           <p
             className="microcopy"
@@ -442,14 +444,45 @@ function FoundingFamilyInner() {
               onChange={(e) => setUsdInput(e.target.value)}
               disabled={loading || qrStatus === "waiting" || qrStatus === "confirming"}
             />
-            <p className="microcopy" style={{ marginTop: "0.35rem" }}>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "0.4rem",
+                marginTop: "0.55rem",
+              }}
+            >
+              {[1, 5, 10, 25, 50].map((amount) => (
+                <button
+                  key={amount}
+                  type="button"
+                  className="btn btn-ghost"
+                  style={{
+                    minHeight: 36,
+                    padding: "0.35rem 0.75rem",
+                    fontSize: "0.9rem",
+                    fontWeight: usd === amount ? 700 : 500,
+                    borderColor:
+                      usd === amount ? "var(--veya-forest)" : undefined,
+                  }}
+                  onClick={() => setUsdInput(String(amount))}
+                  disabled={
+                    loading || qrStatus === "waiting" || qrStatus === "confirming"
+                  }
+                >
+                  ${amount}
+                </button>
+              ))}
+            </div>
+            <p className="microcopy" style={{ marginTop: "0.45rem" }}>
               {quoteLoading
                 ? "Updating SOL quote…"
                 : quote
                   ? `≈ ${quote.solAmount.toFixed(6)} SOL at ~$${quote.solUsd.toFixed(2)}/SOL`
                   : `Minimum $${MIN_USD}.`}{" "}
-              ${MIN_USD} gets early access once the app is available; you may
-              contribute more.
+              Enter any amount from ${MIN_USD} up — contribute as much as
+              you&apos;d like. ${MIN_USD} gets early access once the app is
+              available.
             </p>
           </div>
 
@@ -618,8 +651,8 @@ function FoundingFamilyInner() {
                   : "Pay with QR / wallet →"}
           </button>
           <p className="microcopy" style={{ textAlign: "center" }}>
-            One-time SOL payment · ${MIN_USD}+ · early access when the app is
-            available
+            One-time SOL contribution · from ${MIN_USD} · give what you like ·
+            early access when the app is available
           </p>
         </form>
       </div>

@@ -11,7 +11,7 @@ export const site = {
   gsDisclosure:
     "Veya is an independent progress companion and is not affiliated with or endorsed by Girl Scouts of the USA.",
   developmentStatus:
-    "Veya is still in active development. Your $1 gets early access to the app once it's available — we'll email the adult purchaser when that invitation is ready.",
+    "Veya is still in active development. Contribute from $1 — as much as you'd like. That $1 minimum gets early access once the app is available; we'll email the adult purchaser when the invitation is ready.",
   /** Product scope: GS-only now; architecture stays open for later audiences. */
   audienceNow: "Girl Scout families",
   audienceLater: "families everywhere",
@@ -35,7 +35,7 @@ export const hero = {
   primaryCta: "Become a Founding Family — $1 →",
   secondaryCta: "See how Veya works",
   microcopy:
-    "$1+ in SOL once. Early access when the app is available. Not a subscription. Parent or guardian checkout required.",
+    "From $1 in SOL — contribute as much as you'd like. Early access when the app is available. Not a subscription. Parent or guardian checkout required.",
 };
 
 export const founderProof = {
@@ -160,16 +160,17 @@ export const offer = {
   id: "founding-family",
   eyebrow: "HELP SHAPE VEYA",
   headline: "Join the first Girl Scout families for $1.",
-  body: "Veya is being built in the open with Girl Scout families who care about real-world learning. Pay $1 or more in SOL — your $1 gets early access to the app once it's available, plus opportunities to help make Veya better.",
+  body: "Veya is being built in the open with Girl Scout families who care about real-world learning. Contribute what you like in SOL — $1 minimum gets early access to the app once it's available, and you can give more to help us build.",
   includes: [
-    "Early access to the app once it's available ($1)",
+    "$1 minimum gets early access once the app is available",
+    "Contribute as much as you'd like beyond that",
     "Founder updates sent to the adult purchaser",
     "Opportunities to test features and share feedback",
     "Optional Founding Family recognition inside Veya",
   ],
-  cta: "Get Early Access for $1 →",
+  cta: "Get Early Access from $1 →",
   microcopy:
-    "$1+ in SOL once. Early access when available. Not a subscription. Parent or guardian checkout required.",
+    "From $1 in SOL — contribute as much as you'd like. Early access when available. Not a subscription. Parent or guardian checkout required.",
   refund:
     "If Veya cannot offer your family early access, your $1 will be refunded. Before launch, a parent may also request a refund at hello@veya.family.",
 };
@@ -193,9 +194,10 @@ export const closing = {
 
 export const checkout = {
   title: "Founding Family Early Access",
-  price: "$1+ one-time · paid in SOL",
+  price: "From $1 · contribute any amount · paid in SOL",
   includes: [
-    "$1 gets early access to the app once it's available",
+    "$1 minimum gets early access once the app is available",
+    "Contribute as much as you'd like",
     "Founder updates",
     "Opportunities to test Veya",
     "Opportunities to help shape what gets built next",
@@ -203,10 +205,10 @@ export const checkout = {
   ],
   payCta: "Pay with Solana →",
   demoNote:
-    "Pay $1 or more in SOL to Veya's treasury wallet. Your $1 gets early access once the app is available.",
+    "Contribute from $1 in SOL — as much as you'd like. Your $1 minimum gets early access once the app is available.",
   consents: [
     "I am a parent or guardian, or I am at least 18 years old.",
-    "I understand this is a one-time $1+ early-access purchase in SOL, and that early access comes once the app is available.",
+    "I understand this is a one-time contribution in SOL (minimum $1), and that early access comes once the app is available.",
     "I agree to the Early Access Terms and Privacy Policy.",
   ],
   marketingOptIn:
@@ -260,23 +262,23 @@ export const faqItems = [
   },
   {
     q: "What does the $1 include?",
-    a: "Your $1 (or more) Founding Family contribution is paid in SOL on Solana. That $1 gets early access to the app once it's available, plus founder updates for the adult purchaser and opportunities to test Veya and share feedback. You may contribute more than $1.",
+    a: "Founding Family contributions start at $1 (paid in SOL), and you can contribute as much as you'd like. The $1 minimum gets early access to the app once it's available, plus founder updates for the adult purchaser and opportunities to test Veya and share feedback.",
   },
   {
     q: "How do I pay?",
-    a: "Founding Family payments are Solana-only. On a phone, scan the Solana Pay QR with Phantom (or another Solana wallet). On a computer, connect a browser wallet or scan the QR with your phone. We confirm the transfer on-chain.",
+    a: "Founding Family payments are Solana-only. Choose any amount from $1 up, then scan the Solana Pay QR with Phantom (or another Solana wallet) or connect a browser wallet. We confirm the transfer on-chain.",
   },
   {
     q: "Is the $1 a subscription?",
-    a: "No. It is a one-time early-access payment in SOL. Any future optional paid plan will be described separately and will require a new, clear choice.",
+    a: "No. It is a one-time contribution in SOL. Any future optional paid plan will be described separately and will require a new, clear choice.",
   },
   {
     q: "When will we receive access?",
-    a: "Veya is in active development. Your $1 gets early access once the app is available — we will email invitation details to the adult purchaser at that time.",
+    a: "Veya is in active development. Your contribution of $1 or more gets early access once the app is available — we will email invitation details to the adult purchaser at that time.",
   },
   {
     q: "Is the $1 refundable?",
-    a: "If Veya cannot offer your family early access, the $1 will be refunded. Before launch, a parent may request a refund by contacting hello@veya.family.",
+    a: "If Veya cannot offer your family early access, the contribution will be refunded. Before launch, a parent may request a refund by contacting hello@veya.family.",
   },
   {
     q: "Does my child purchase early access?",
@@ -288,6 +290,6 @@ export const faqItems = [
   },
   {
     q: "Will Veya always cost $1?",
-    a: "The $1 is for the Founding Family early-access offer. Veya may offer free or paid plans later, but joining early access does not enroll a family in a subscription.",
+    a: "The $1 minimum is for the Founding Family early-access offer — you may contribute more. Veya may offer free or paid plans later, but joining early access does not enroll a family in a subscription.",
   },
 ] as const;
