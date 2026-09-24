@@ -1029,7 +1029,44 @@ textarea:focus-visible,
   color: var(--bj-muted);
   font-size: 0.92rem;
   font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.photo-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
   margin-bottom: 1rem;
+}
+
+.photo-preview img {
+  display: block;
+  width: 100%;
+  max-height: 12rem;
+  object-fit: cover;
+  border-radius: 0.85rem;
+  border: 1.5px solid var(--bj-border);
+}
+
+.req-photo-thumb {
+  display: block;
+  width: 4.5rem;
+  height: 4.5rem;
+  object-fit: cover;
+  border-radius: 0.65rem;
+  margin: 0.35rem 0 0.15rem;
+  border: 1px solid var(--bj-border);
+}
+
+.journal-req-photo {
+  display: block;
+  width: min(100%, 14rem);
+  max-height: 10rem;
+  object-fit: cover;
+  border-radius: 0.75rem;
+  margin: 0.45rem 0 0.25rem;
+  border: 1px solid var(--bj-border);
 }
 
 .sheet-actions {
@@ -1046,6 +1083,11 @@ textarea:focus-visible,
   align-items: stretch;
   max-height: min(92vh, 40rem);
   overflow-y: auto;
+}
+
+.celebrate-grown-up {
+  font-size: 0.95rem;
+  font-weight: 700;
 }
 
 .mint-success-sheet .hint {
@@ -1405,35 +1447,22 @@ textarea:focus-visible,
 
 .reset-demo {
   align-self: center;
-  margin-top: 0.25rem;
+  margin-top: 0;
   font-size: 0.88rem;
 }
 
-.demo-mint-card {
-  margin: 0 0 1rem;
-  padding: 1rem 1.1rem;
-  border-radius: var(--bj-radius);
-  background: color-mix(in srgb, var(--bj-outdoors) 10%, var(--bj-card));
-  border: 1.5px solid color-mix(in srgb, var(--bj-outdoors) 35%, var(--bj-border));
+.home-demo-tools {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.25rem;
 }
 
-.demo-mint-kicker {
-  margin: 0 0 0.2rem;
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--bj-outdoors);
-}
-
-.demo-mint-title {
-  margin: 0 0 0.35rem;
-  font-family: var(--font-display);
-  font-size: 1.25rem;
-}
-
-.demo-mint-card .primary-btn {
-  margin-top: 0.65rem;
+.demo-mint-link {
+  font-size: 0.82rem;
+  opacity: 0.72;
 }
 
 .how-footer {

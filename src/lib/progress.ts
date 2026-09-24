@@ -32,14 +32,15 @@ export function completeRequirement(
   requirementId: string,
   badge: Badge,
   note: string,
-  photoName?: string,
+  photo?: { name: string; dataUrl: string },
 ): ProgressState {
   const state = loadProgress();
   const entry: RequirementProgress = {
     note: note.trim(),
     completedAt: new Date().toISOString(),
   };
-  if (photoName) entry.photoName = photoName;
+  if (photo?.name) entry.photoName = photo.name;
+  if (photo?.dataUrl) entry.photoDataUrl = photo.dataUrl;
 
   state.requirements[requirementId] = entry;
 

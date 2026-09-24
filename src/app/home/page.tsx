@@ -83,21 +83,6 @@ export default function HomePage() {
         <SpeakButton text={speakText} language={lang} label={t(lang, "speak")} />
       </header>
 
-      <section className="demo-mint-card" aria-label={t(lang, "demoMintTitle")}>
-        <p className="demo-mint-kicker">{t(lang, "demoMintKicker")}</p>
-        <h2 className="demo-mint-title">{t(lang, "demoMintTitle")}</h2>
-        <p className="hint soft">
-          {t(lang, "demoMintBody", { name: demoBadge.name })}
-        </p>
-        <button
-          type="button"
-          className="primary-btn wide"
-          onClick={startMintDemo}
-        >
-          {t(lang, "demoMintCta", { name: demoBadge.name })}
-        </button>
-      </section>
-
       <div className="clump-stack">
         {groups.length === 0 ? (
           <EmptyAdventure
@@ -117,18 +102,27 @@ export default function HomePage() {
         )}
       </div>
 
-      <button
-        type="button"
-        className="ghost-btn reset-demo"
-        onClick={() => {
-          clearProfile();
-          clearProgress();
-          clearNotebook();
-          router.push("/onboarding");
-        }}
-      >
-        {t(lang, "resetDemo")}
-      </button>
+      <div className="home-demo-tools">
+        <button
+          type="button"
+          className="ghost-btn demo-mint-link"
+          onClick={startMintDemo}
+        >
+          {t(lang, "demoMintLink", { name: demoBadge.name })}
+        </button>
+        <button
+          type="button"
+          className="ghost-btn reset-demo"
+          onClick={() => {
+            clearProfile();
+            clearProgress();
+            clearNotebook();
+            router.push("/onboarding");
+          }}
+        >
+          {t(lang, "resetDemo")}
+        </button>
+      </div>
 
       <BottomNav
         homeLabel={t(lang, "navHome")}

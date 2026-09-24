@@ -145,11 +145,18 @@ export default function JournalPage() {
                                     lang === "es" ? "es" : "en",
                                   )}
                                 </p>
-                                {done.photoName && (
+                                {done.photoDataUrl ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    className="journal-req-photo"
+                                    src={done.photoDataUrl}
+                                    alt={done.photoName ?? t(lang, "journalPhoto")}
+                                  />
+                                ) : done.photoName ? (
                                   <p className="journal-req-date">
                                     {t(lang, "journalPhoto")}: {done.photoName}
                                   </p>
-                                )}
+                                ) : null}
                               </>
                             ) : (
                               <p className="journal-req-date">

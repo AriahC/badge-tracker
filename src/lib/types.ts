@@ -60,6 +60,8 @@ export type Badge = {
 export type RequirementProgress = {
   note: string;
   photoName?: string;
+  /** Compressed JPEG/PNG data URL kept in local progress (optional). */
+  photoDataUrl?: string;
   completedAt: string;
 };
 

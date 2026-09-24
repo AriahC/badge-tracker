@@ -10,6 +10,7 @@ import { categoryColor, getBadgeById } from "@/lib/badges";
 import { explorerUrl, nftPagePath, ownerExplorerUrl } from "@/lib/journal";
 import { t } from "@/lib/i18n";
 import { checkRequirementNote } from "@/lib/noteCheck";
+import { readRequirementPhoto } from "@/lib/photo";
 import {
   badgeProgressRatio,
   completeRequirement,
@@ -39,7 +40,15 @@ export default function BadgeDetailPage() {
   const [activeReqId, setActiveReqId] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [noteError, setNoteError] = useState<"tooShort" | "gibberish" | "unrelated" | null>(null);
-  const [showCelebrate, setShowCelebrate] = useState(false);
+  const [photo, setPhoto] = useState<{ name: string; dataUrl: string } | null>(
+    null,
+  );
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  /** Pride first; mint only after “ask a grown-up”. */
+  const [celebratePhase, setCelebratePhase] = useState<"pride" | "mint" | null>(
+    null,
+  );
   const [showMintSuccess, setShowMintSuccess] = useState(false);
   const [mintBusy, setMintBusy] = useState(false);
   const [mintFailed, setMintFailed] = useState(false);
@@ -70,7 +79,7 @@ export default function BadgeDetailPage() {
       record &&
       record.mintStatus !== "minted"
     ) {
-      setShowCelebrate(true);
+      setCelebratePhase("pride");
     }
   }, [params.id, router, searchParams]);
 
@@ -99,10 +108,32 @@ export default function BadgeDetailPage() {
     setActiveReqId(reqId);
     setNote("");
     setNoteError(null);
+    setPhoto(null);
+    setPhotoError(null);
+    setPhotoBusy(false);
+  }
+
+  async function onPhotoSelected(file: File | null) {
+    if (!file) {
+      setPhoto(null);
+      setPhotoError(null);
+      return;
+    }
+    setPhotoBusy(true);
+    setPhotoError(null);
+    try {
+      const next = await readRequirementPhoto(file);
+      setPhoto(next);
+    } catch {
+      setPhoto(null);
+      setPhotoError(t(lang, "photoFail"));
+    } finally {
+      setPhotoBusy(false);
+    }
   }
 
   function saveRequirement() {
-    if (!badge || !activeReq || !activeReqId) return;
+    if (!badge || !activeReq || !activeReqId || photoBusy) return;
     const check = checkRequirementNote(
       `${activeReq.text}. ${activeReq.detail}`,
       note,
@@ -111,13 +142,20 @@ export default function BadgeDetailPage() {
       setNoteError(check.reason);
       return;
     }
-    const next = completeRequirement(activeReqId, badge, note);
+    const next = completeRequirement(
+      activeReqId,
+      badge,
+      note,
+      photo ?? undefined,
+    );
     setProgress(next);
     setActiveReqId(null);
     setNote("");
     setNoteError(null);
+    setPhoto(null);
+    setPhotoError(null);
     if (isBadgeEarned(badge.id, next)) {
-      setShowCelebrate(true);
+      setCelebratePhase("pride");
     }
   }
 
@@ -158,13 +196,13 @@ export default function BadgeDetailPage() {
               ? t(lang, "mintNotConfiguredBody")
               : t(lang, "mintFailBody")),
         );
-        setShowCelebrate(false);
+        setCelebratePhase(null);
         setMintBusy(false);
         return;
       }
       const next = markMintAttempt(badge.id, "minted", data.signature, owner);
       setProgress(next);
-      setShowCelebrate(false);
+      setCelebratePhase(null);
       setMintExplorerHref(
         data.explorerUrl ?? explorerUrl(data.signature),
       );
@@ -175,7 +213,7 @@ export default function BadgeDetailPage() {
       markMintAttempt(badge.id, "failed");
       setMintFailed(true);
       setMintErrorDetail(t(lang, "mintFailBody"));
-      setShowCelebrate(false);
+      setCelebratePhase(null);
     } finally {
       setMintBusy(false);
     }
@@ -249,6 +287,14 @@ export default function BadgeDetailPage() {
                     {done ? (
                       <>
                         <span className="req-note">“{done.note}”</span>
+                        {done.photoDataUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            className="req-photo-thumb"
+                            src={done.photoDataUrl}
+                            alt={done.photoName ?? t(lang, "journalPhoto")}
+                          />
+                        ) : null}
                         <span className="req-meta">
                           {t(lang, "reqCompleted")} ·{" "}
                           {new Date(done.completedAt).toLocaleDateString(
@@ -364,8 +410,42 @@ export default function BadgeDetailPage() {
             )}
             <label className="photo-label">
               <span>📷 {t(lang, "photoOptional")}</span>
-              <input type="file" accept="image/*" onChange={() => {}} />
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                disabled={photoBusy}
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null;
+                  void onPhotoSelected(file);
+                  e.target.value = "";
+                }}
+              />
             </label>
+            {photoBusy ? (
+              <p className="hint soft">{t(lang, "photoBusy")}</p>
+            ) : null}
+            {photoError ? (
+              <p className="hint soft" role="alert">
+                {photoError}
+              </p>
+            ) : null}
+            {photo ? (
+              <div className="photo-preview">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={photo.dataUrl} alt={photo.name} />
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  onClick={() => {
+                    setPhoto(null);
+                    setPhotoError(null);
+                  }}
+                >
+                  {t(lang, "photoRemove")}
+                </button>
+              </div>
+            ) : null}
             <div className="sheet-actions">
               <button
                 type="button"
@@ -377,7 +457,7 @@ export default function BadgeDetailPage() {
               <button
                 type="button"
                 className="primary-btn"
-                disabled={note.trim().length < 8}
+                disabled={note.trim().length < 8 || photoBusy}
                 onClick={saveRequirement}
               >
                 {t(lang, "saveRequirement")}
@@ -387,7 +467,7 @@ export default function BadgeDetailPage() {
         </div>
       )}
 
-      {showCelebrate && (
+      {celebratePhase && (
         <div className="sheet-backdrop celebrate" role="presentation">
           <div className="sheet celebrate-sheet" role="dialog" aria-modal="true">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -409,25 +489,47 @@ export default function BadgeDetailPage() {
               />
             </div>
             <h2>{t(lang, "celebrateTitle", { name: badge.name })}</h2>
-            <p className="hint">{t(lang, "celebrateBody")}</p>
-            <MintDestinationPanel
-              lang={lang}
-              ownerAddress={ownerAddress}
-              onOwnerAddressChange={setOwnerAddress}
-              mintBusy={mintBusy}
-              onMint={() => void makePermanent()}
-              walletInputId="celebrate-mint-wallet"
-              footer={
+            {celebratePhase === "pride" ? (
+              <>
+                <p className="hint">{t(lang, "celebrateBody")}</p>
                 <button
                   type="button"
-                  className="ghost-btn wide"
-                  onClick={() => setShowCelebrate(false)}
-                  disabled={mintBusy}
+                  className="primary-btn wide"
+                  onClick={() => setCelebratePhase(null)}
                 >
-                  {t(lang, "celebrateLater")}
+                  {t(lang, "celebrateDone")}
                 </button>
-              }
-            />
+                <button
+                  type="button"
+                  className="ghost-btn wide celebrate-grown-up"
+                  onClick={() => setCelebratePhase("mint")}
+                >
+                  {t(lang, "celebrateAskGrownUp")}
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="hint">{t(lang, "celebrateMintBody")}</p>
+                <MintDestinationPanel
+                  lang={lang}
+                  ownerAddress={ownerAddress}
+                  onOwnerAddressChange={setOwnerAddress}
+                  mintBusy={mintBusy}
+                  onMint={() => void makePermanent()}
+                  walletInputId="celebrate-mint-wallet"
+                  footer={
+                    <button
+                      type="button"
+                      className="ghost-btn wide"
+                      onClick={() => setCelebratePhase(null)}
+                      disabled={mintBusy}
+                    >
+                      {t(lang, "celebrateLater")}
+                    </button>
+                  }
+                />
+              </>
+            )}
           </div>
         </div>
       )}

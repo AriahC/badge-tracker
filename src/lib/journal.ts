@@ -9,6 +9,7 @@ export type JournalRequirement = {
   text: string;
   note: string;
   photoName?: string;
+  photoDataUrl?: string;
   completedAt: string;
 };
 
@@ -73,6 +74,7 @@ export function buildJournalBadges(
         text: req.text,
         note: progress.note,
         photoName: progress.photoName,
+        photoDataUrl: progress.photoDataUrl,
         completedAt: progress.completedAt,
       });
     }
