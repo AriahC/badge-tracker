@@ -725,6 +725,33 @@ textarea:focus-visible,
   width: 100%;
 }
 
+.mint-ok-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  margin: 0.15rem 0 0.35rem;
+}
+
+.mint-ok-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  text-align: left;
+}
+
+.mint-ok-name {
+  margin: 0 !important;
+  font-family: var(--font-display) !important;
+  font-size: 1.05rem !important;
+  color: var(--bj-ink) !important;
+}
+
+.mint-success-details {
+  text-align: left;
+  margin: 0.15rem 0 0.5rem !important;
+}
+
 .journal-mint-actions,
 .gallery-mint-actions {
   display: flex;

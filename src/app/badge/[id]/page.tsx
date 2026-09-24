@@ -7,7 +7,7 @@ import { BadgeOrb } from "@/components/BadgeOrb";
 import { SpeakButton } from "@/components/SpeakButton";
 import { decorationSrc } from "@/lib/assets";
 import { categoryColor, getBadgeById } from "@/lib/badges";
-import { explorerUrl, nftPagePath } from "@/lib/journal";
+import { explorerUrl, nftPagePath, ownerExplorerUrl } from "@/lib/journal";
 import { t } from "@/lib/i18n";
 import { checkRequirementNote } from "@/lib/noteCheck";
 import {
@@ -20,6 +20,11 @@ import {
 import { MintDestinationPanel } from "@/components/MintDestinationPanel";
 import { loadMintWallet, loadProfile, saveMintWallet } from "@/lib/storage";
 import type { Badge, ProgressState, Profile } from "@/lib/types";
+
+function shortAddr(value: string): string {
+  if (value.length <= 12) return value;
+  return `${value.slice(0, 6)}…${value.slice(-6)}`;
+}
 
 export default function BadgeDetailPage() {
   const params = useParams<{ id: string }>();
@@ -164,6 +169,8 @@ export default function BadgeDetailPage() {
         data.explorerUrl ?? explorerUrl(data.signature),
       );
       setShowMintSuccess(true);
+      // Land on the in-app NFT certificate so judges always see it.
+      router.push(nftPagePath(badge.id));
     } catch {
       markMintAttempt(badge.id, "failed");
       setMintFailed(true);
@@ -267,10 +274,25 @@ export default function BadgeDetailPage() {
           {mintStatus === "minted" && mintAddress ? (
             <div className="mint-ok">
               <p>{t(lang, "mintSuccess")}</p>
-              <Link
-                className="primary-btn wide"
-                href={nftPagePath(badge.id)}
-              >
+              <div className="mint-ok-preview">
+                <BadgeOrb
+                  iconSlug={badge.iconSlug}
+                  color={color}
+                  name={badge.name}
+                  state="earned"
+                  size={72}
+                  colorful
+                />
+                <div className="mint-ok-copy">
+                  <p className="mint-ok-name">{badge.name}</p>
+                  {ownerAddress ? (
+                    <p className="hint soft mono" title={ownerAddress}>
+                      {t(lang, "nftOwnerLabel")}: {shortAddr(ownerAddress)}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+              <Link className="primary-btn wide" href={nftPagePath(badge.id)}>
                 {t(lang, "nftViewInApp")}
               </Link>
               <a
@@ -440,6 +462,40 @@ export default function BadgeDetailPage() {
             <p className="hint">
               {t(lang, "mintSuccessBody", { name: badge.name })}
             </p>
+            {(ownerAddress || mintAddress) && (
+              <dl className="nft-details mint-success-details">
+                {ownerAddress ? (
+                  <div className="nft-detail-row">
+                    <dt>{t(lang, "nftOwnerLabel")}</dt>
+                    <dd>
+                      <a
+                        className="mono nft-mono-link"
+                        href={ownerExplorerUrl(ownerAddress)}
+                        target="_blank"
+                        rel="noreferrer"
+                        title={ownerAddress}
+                      >
+                        {shortAddr(ownerAddress)}
+                      </a>
+                    </dd>
+                  </div>
+                ) : null}
+                <div className="nft-detail-row">
+                  <dt>{t(lang, "nftTxLabel")}</dt>
+                  <dd>
+                    <a
+                      className="mono nft-mono-link"
+                      href={mintExplorerHref ?? explorerUrl(mintAddress)}
+                      target="_blank"
+                      rel="noreferrer"
+                      title={mintAddress}
+                    >
+                      {shortAddr(mintAddress)}
+                    </a>
+                  </dd>
+                </div>
+              </dl>
+            )}
             <Link className="primary-btn wide" href={nftPagePath(badge.id)}>
               {t(lang, "nftViewInApp")}
             </Link>
