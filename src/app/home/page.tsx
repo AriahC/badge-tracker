@@ -92,37 +92,38 @@ export default function HomePage() {
           />
         ) : (
           groups.map((group) => (
-            <BadgeClump
-              key={group.category}
-              category={group.category}
-              badges={group.badges}
-              progress={progress}
-            />
+            <div key={group.category} className="clump-with-insert">
+              <BadgeClump
+                category={group.category}
+                badges={group.badges}
+                progress={progress}
+              />
+              {group.category === "Art and Imagination" ? (
+                <button
+                  type="button"
+                  className="ghost-btn demo-mint-link"
+                  onClick={startMintDemo}
+                >
+                  {t(lang, "demoMintLink", { name: demoBadge.name })}
+                </button>
+              ) : null}
+            </div>
           ))
         )}
       </div>
 
-      <div className="home-demo-tools">
-        <button
-          type="button"
-          className="ghost-btn demo-mint-link"
-          onClick={startMintDemo}
-        >
-          {t(lang, "demoMintLink", { name: demoBadge.name })}
-        </button>
-        <button
-          type="button"
-          className="ghost-btn reset-demo"
-          onClick={() => {
-            clearProfile();
-            clearProgress();
-            clearNotebook();
-            router.push("/onboarding");
-          }}
-        >
-          {t(lang, "resetDemo")}
-        </button>
-      </div>
+      <button
+        type="button"
+        className="ghost-btn reset-demo"
+        onClick={() => {
+          clearProfile();
+          clearProgress();
+          clearNotebook();
+          router.push("/onboarding");
+        }}
+      >
+        {t(lang, "resetDemo")}
+      </button>
 
       <BottomNav
         homeLabel={t(lang, "navHome")}
