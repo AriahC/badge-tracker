@@ -167,3 +167,13 @@ export function explorerUrl(mintAddress: string): string {
   const kind = looksLikeTx ? "tx" : "address";
   return `https://explorer.solana.com/${kind}/${encodeURIComponent(mintAddress)}?cluster=devnet`;
 }
+
+/** Explorer link for a Solana wallet / leaf owner on devnet. */
+export function ownerExplorerUrl(ownerAddress: string): string {
+  return `https://explorer.solana.com/address/${encodeURIComponent(ownerAddress)}?cluster=devnet`;
+}
+
+/** In-app NFT certificate page for a minted badge. */
+export function nftPagePath(badgeId: string): string {
+  return `/badge/${encodeURIComponent(badgeId)}/nft`;
+}

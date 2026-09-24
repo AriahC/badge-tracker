@@ -61,6 +61,8 @@ export function markMintAttempt(
   status: "pending" | "minted" | "failed",
   /** On-chain tx signature when status is "minted". */
   mintSignature?: string,
+  /** Destination wallet (leafOwner) when status is "minted". */
+  mintOwner?: string,
 ): ProgressState {
   const state = loadProgress();
   const existing = state.earned[badgeId];
@@ -72,6 +74,8 @@ export function markMintAttempt(
       status === "minted" && mintSignature
         ? mintSignature
         : existing.mintAddress,
+    mintOwner:
+      status === "minted" && mintOwner ? mintOwner : existing.mintOwner,
   };
   saveProgress(state);
   return state;

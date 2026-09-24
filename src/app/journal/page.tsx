@@ -8,7 +8,7 @@ import { EmptyAdventure } from "@/components/EmptyAdventure";
 import { SpeakButton } from "@/components/SpeakButton";
 import { badgeImageSrc, categoryColor } from "@/lib/assets";
 import { t } from "@/lib/i18n";
-import { buildJournalBadges, explorerUrl } from "@/lib/journal";
+import { buildJournalBadges, explorerUrl, nftPagePath } from "@/lib/journal";
 import { formatEntryDate } from "@/lib/notebook";
 import { loadProgress } from "@/lib/progress";
 import { loadProfile } from "@/lib/storage";
@@ -162,14 +162,22 @@ export default function JournalPage() {
                     </ul>
 
                     {item.earned?.mintStatus === "minted" && item.earned.mintAddress && (
-                      <a
-                        className="journal-explorer"
-                        href={explorerUrl(item.earned.mintAddress)}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {t(lang, "journalViewNft")}
-                      </a>
+                      <div className="journal-mint-actions">
+                        <Link
+                          className="primary-btn journal-nft-btn"
+                          href={nftPagePath(item.badge.id)}
+                        >
+                          {t(lang, "nftViewInApp")}
+                        </Link>
+                        <a
+                          className="journal-explorer"
+                          href={explorerUrl(item.earned.mintAddress)}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {t(lang, "nftOpenExplorer")}
+                        </a>
+                      </div>
                     )}
 
                     {item.status === "earned" &&

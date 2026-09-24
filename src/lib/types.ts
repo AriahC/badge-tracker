@@ -69,7 +69,10 @@ export type EarnedBadgeRecord = {
   badgeId: string;
   earnedAt: string;
   mintStatus: "pending" | "minted" | "failed";
+  /** On-chain mint transaction signature. */
   mintAddress?: string;
+  /** Solana wallet (Swig or paste) that received the cNFT. */
+  mintOwner?: string;
 };
 
 export type ProgressState = {

@@ -7,7 +7,7 @@ import { BadgeOrb } from "@/components/BadgeOrb";
 import { SpeakButton } from "@/components/SpeakButton";
 import { decorationSrc } from "@/lib/assets";
 import { categoryColor, getBadgeById } from "@/lib/badges";
-import { explorerUrl } from "@/lib/journal";
+import { explorerUrl, nftPagePath } from "@/lib/journal";
 import { t } from "@/lib/i18n";
 import { checkRequirementNote } from "@/lib/noteCheck";
 import {
@@ -157,7 +157,7 @@ export default function BadgeDetailPage() {
         setMintBusy(false);
         return;
       }
-      const next = markMintAttempt(badge.id, "minted", data.signature);
+      const next = markMintAttempt(badge.id, "minted", data.signature, owner);
       setProgress(next);
       setShowCelebrate(false);
       setMintExplorerHref(
@@ -267,13 +267,19 @@ export default function BadgeDetailPage() {
           {mintStatus === "minted" && mintAddress ? (
             <div className="mint-ok">
               <p>{t(lang, "mintSuccess")}</p>
+              <Link
+                className="primary-btn wide"
+                href={nftPagePath(badge.id)}
+              >
+                {t(lang, "nftViewInApp")}
+              </Link>
               <a
                 className="journal-explorer"
                 href={explorerUrl(mintAddress)}
                 target="_blank"
                 rel="noreferrer"
               >
-                {t(lang, "journalViewNft")}
+                {t(lang, "nftOpenExplorer")}
               </a>
             </div>
           ) : (
@@ -434,13 +440,16 @@ export default function BadgeDetailPage() {
             <p className="hint">
               {t(lang, "mintSuccessBody", { name: badge.name })}
             </p>
+            <Link className="primary-btn wide" href={nftPagePath(badge.id)}>
+              {t(lang, "nftViewInApp")}
+            </Link>
             <a
-              className="primary-btn wide"
+              className="ghost-btn wide"
               href={mintExplorerHref ?? explorerUrl(mintAddress)}
               target="_blank"
               rel="noreferrer"
             >
-              {t(lang, "journalViewNft")}
+              {t(lang, "nftOpenExplorer")}
             </a>
             <Link href="/journal" className="ghost-btn wide">
               {t(lang, "mintSuccessJournal")}

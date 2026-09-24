@@ -12,6 +12,7 @@ import { t } from "@/lib/i18n";
 import {
   buildJournalDays,
   explorerUrl,
+  nftPagePath,
   type JournalDayGroup,
 } from "@/lib/journal";
 import {
@@ -253,14 +254,22 @@ export default function GalleryClient() {
                         </span>
                       </Link>
                       {event.type === "minted" && (
-                        <a
-                          className="journal-explorer tiny"
-                          href={explorerUrl(event.mintAddress)}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {t(lang, "journalViewNft")}
-                        </a>
+                        <div className="gallery-mint-actions">
+                          <Link
+                            className="journal-explorer tiny"
+                            href={nftPagePath(event.badgeId)}
+                          >
+                            {t(lang, "nftViewInApp")}
+                          </Link>
+                          <a
+                            className="journal-explorer tiny"
+                            href={explorerUrl(event.mintAddress)}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {t(lang, "nftOpenExplorer")}
+                          </a>
+                        </div>
                       )}
                     </li>
                   );
